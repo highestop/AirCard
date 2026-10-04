@@ -9,12 +9,9 @@ from __future__ import annotations
 import io
 import json
 import os
-import posixpath
 import re
-import secrets
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 # Ensure bundled and standard bin paths are in PATH
@@ -127,9 +124,6 @@ def format_device(device: dict) -> dict:
         "name": device.get("name") or default_name,
         "version": device.get("version") or ("Unknown" if has_product else ""),
         "product": product or "",
-        "language": device.get("language") or "en",
-        "locale": device.get("locale") or "",
-        "bold_text": device.get("bold_text"),
         "connected": True,
     }
 

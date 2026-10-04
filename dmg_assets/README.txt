@@ -28,12 +28,4 @@
    - Click "Flash Skins".
    - Force-close the Wallet app on your iPhone to see your new designs.
 
-   [Passcode Themes (.passthm)]
-   - Switch to the "Passcode Themes" tab.
-   - Drag & drop a .passthm file (or select one via file picker).
-   - Preview the keypad artwork on the interactive mockup.
-   - Click "Apply Passcode Theme".
-   - Restart your iPhone.
-   * NOTE: Supports all system languages (RU, UK, EN, etc.) and Bold Text!
-
 ============================================================
