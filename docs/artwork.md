@@ -1,37 +1,71 @@
-# 卡面编辑器
+# Card artwork editor
 
-卡面编辑器是主 Web 界面的一部分，图片在浏览器本地 Canvas 中处理。
+The card artwork editor is part of the main web interface. Images are processed
+locally in the browser using Canvas.
 
-## 使用
+## Usage
 
-1. 在主界面选中卡片，打开「卡面编辑器」；也可以从单张卡片的编辑入口打开。
-2. 选择或拖入 PNG、JPEG、WebP。单文件最多 **30 MiB**、**48 MP**，单边最多 **16,384 px**。HEIC 等格式可先通过卡片的普通选图入口导入，再编辑已转换的卡面。
-3. 拖动画面、调整缩放，或用水平/垂直取景滑杆调整构图。滑杆支持方向键，画面支持方向键平移，Shift 可加大步长。
-4. 选择保留透明度、白底或黑底。棋盘格只是透明度预览，不会写入图片。
-5. 点击应用按钮，将 **1536 × 969 PNG** 直接设置到打开编辑器时选中的卡片。回到主界面检查预览，再点击「写入卡面」同步到 iPhone。
+1. Select cards in the main interface and open the artwork editor. You can also
+   open it from an individual card's edit control.
+2. Select or drag in a PNG, JPEG, or WebP image. Each file is limited to
+   **30 MiB**, **48 MP**, and **16,384 px** on either side. For formats such as
+   HEIC, first import the image through a card's regular image picker, then edit
+   the converted artwork.
+3. Drag the image, adjust the zoom, or use the horizontal and vertical framing
+   sliders. The sliders support arrow keys. You can also use arrow keys to pan
+   the image; hold Shift for larger steps.
+4. Keep transparency or choose a white or black background. The checkerboard
+   only previews transparency and is not included in the output image.
+5. Apply the **1536 × 969 PNG** directly to the cards selected when you opened
+   the editor. Return to the main interface to check the previews, then use the
+   artwork write control to synchronize them to the iPhone.
 
-应用图片只更新本地卡面配置，不会自动写入手机。若设备或目标卡片发生变化，需要重新打开编辑器确认目标。
+Applying an image only updates the local artwork configuration; it does not
+automatically write to the phone. If the device or target cards change, reopen
+the editor to confirm the targets.
 
-已有卡面会自动载入；多选时使用第一张有图片的卡面作为编辑起点，应用后各目标卡片使用同一张图片。已保存的卡面是裁切后的 PNG，无法恢复原图被裁掉的部分；需要重新取景时，请再次选择原始图片。
+Existing artwork loads automatically. When multiple cards are selected, the
+first card with an image provides the starting artwork, and applying the result
+sets the same image on every target card. Saved artwork is an already-cropped
+PNG, so the editor cannot recover cropped-out parts of the original. Select the
+original image again if you need to reframe it.
 
-仍可下载 PNG。未选择卡片时可以单独制作和下载图片，也可直接访问本地服务的 `/artwork/`。关闭窗口前请先应用或下载，否则未保存构图会丢失。
+PNG downloads remain available. With no cards selected, you can create and
+download an image on its own, or visit `/artwork/` on the local service directly.
+Apply or download your work before closing the window; unsaved edits will be
+lost.
 
-## 图像边界
+## Image behavior and limits
 
-- 初始构图按比例填满并居中，几何规则与 `backend/image_processing.py` 一致。
-- 导出尺寸固定为 1536 × 969，不受页面大小或屏幕像素密度影响。
-- 放大不能补回原图细节；图像分辨率不足时会显示提示。
-- 浏览器负责照片方向、颜色与缩放插值，不保证与 macOS `sips` 逐像素一致。动画只取一个静态画面。
-- 预览不模拟 Wallet 圆角、标志、文字叠加或实机缩放；重要内容应留出边距，效果以手机为准。
-- 透明区域由 Wallet 决定如何显示；需要确定底色时选白底或黑底。
-- 文件错误或超限时会提示，保留已经载入的有效构图。
+- The initial crop fills the frame proportionally and centers the image, using
+  the same geometry as `backend/image_processing.py`.
+- Export size is fixed at 1536 × 969, regardless of page size or screen pixel
+  density.
+- Enlarging an image cannot restore missing detail. The editor warns when the
+  image resolution is insufficient.
+- The browser handles image orientation, color, and scaling interpolation.
+  Pixel-for-pixel agreement with macOS `sips` is not guaranteed. Animated images
+  are reduced to a single still frame.
+- The preview does not simulate Wallet's rounded corners, logos, text overlays,
+  or on-device scaling. Leave margins around important content and check the
+  result on the phone.
+- Wallet determines how transparent areas appear. Choose a white or black
+  background if you need a specific background color.
+- Invalid files or files that exceed the limits produce an error message while
+  preserving the valid composition already loaded.
 
-## 本地处理与测试
+## Local processing and tests
 
-编辑器不加载外部素材或 CDN，不接受远程图片 URL，也不自行调用设备服务。应用时通过同源窗口消息将 PNG 交给主界面，由主界面再次核对目标并上传到 `127.0.0.1`。不会上传到云端。
+The editor loads no external assets or CDNs, accepts no remote image URLs, and
+does not call device services directly. When you apply an image, it passes the
+PNG to the main interface through same-origin window messages. The main
+interface checks the targets again and uploads the image to `127.0.0.1`.
+Images are not uploaded to the cloud.
 
 ```sh
 make test-web
 ```
 
-测试覆盖裁切边界、文件校验、图像加载竞态、导出和窗口消息中的设备/卡片目标核对。真实图片解码与手机显示仍需浏览器及实机验收。
+Tests cover crop boundaries, file validation, image loading races, export, and
+device/card target validation in window messages. Actual image decoding and
+phone rendering still require validation in a browser and on a real device.

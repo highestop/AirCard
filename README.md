@@ -1,21 +1,21 @@
 # AirCard
 
-个人使用的 Apple Wallet 卡面定制工具。界面运行在浏览器中，设备操作由 Mac 上的 Python 服务和原生 USB 工具完成：
+A personal tool for customizing Apple Wallet card artwork. The interface runs in a browser, while a Python service and native USB tools on the Mac handle device operations:
 
 ```text
-浏览器 → http://127.0.0.1:8765 → Python → macOS 原生设备工具 → USB iPhone
+Browser → http://127.0.0.1:8765 → Python → native macOS device tools → iPhone over USB
 ```
 
-## 开发与运行环境
+## Requirements
 
-- **Mac，macOS 14 或更新版本**，Apple Silicon 或 Intel。原生工具依赖 macOS 的 MobileDevice / AirTrafficHost 私有框架，不能直接在 Windows 或 Linux 上使用。
-- **Python 3.9+**，不需要安装 pip 包。
-- **Xcode Command Line Tools**，用于编译两个 Objective-C 设备工具；不需要完整 Xcode。未安装时运行 `xcode-select --install`。
-- 现代浏览器，以及通过 USB 连接、已解锁并信任这台 Mac 的 iPhone。
+- **A Mac running macOS 14 or newer**, with Apple Silicon or Intel. The native tools depend on the private MobileDevice / AirTrafficHost frameworks in macOS and cannot run directly on Windows or Linux.
+- **Python 3.9+**. No pip packages are required.
+- **Xcode Command Line Tools** to compile the two Objective-C device tools. A full Xcode installation is unnecessary. Run `xcode-select --install` if the command line tools are missing.
+- A modern browser and an iPhone connected over USB, unlocked, and configured to trust this Mac.
 
-卡面写入沿用现有 iOS 18+ 实现。私有设备接口与 Wallet 日志会随系统版本变化，支持范围仍以实际设备验证为准。
+Artwork writing uses the existing iOS 18+ implementation. Private device interfaces and Wallet logs can change between system versions; compatibility still depends on testing with the actual device.
 
-## 启动
+## Start AirCard
 
 ```sh
 git clone https://github.com/highestop/AirCard.git
@@ -23,82 +23,82 @@ cd AirCard
 ./start.sh
 ```
 
-脚本会按需编译 `build/device_helper` 和 `build/airtraffic_host`，然后启动本地服务并打开浏览器。保持终端运行；按 `Ctrl+C` 停止服务。如果正在写入，会先等待当前卡片完成清理，再退出。
+The script builds `build/device_helper` and `build/airtraffic_host` as needed, starts the local service, and opens the browser. Keep the terminal running. Press `Ctrl+C` to stop the service; an active write finishes cleanup for the current card before the service exits.
 
-已经编译过时可以直接运行：
+Once the native tools have been built, you can start the service directly:
 
 ```sh
 python3 -m backend
-# 自选端口，不自动打开浏览器
+# Choose a port without opening the browser automatically.
 python3 -m backend --port 8766 --no-browser
 ```
 
-服务只监听 `127.0.0.1`，请使用终端显示的完整地址。刷新或关闭网页不会中断后台操作；重新打开相同地址即可继续查看。同一个数据目录只能运行一个服务实例；已经启动时直接打开现有页面。如果端口被其他程序占用，请换端口。
+The service listens only on `127.0.0.1`. Use the full address printed in the terminal. Refreshing or closing the page does not interrupt background operations; reopen the same address to check their status. Only one service instance can use a given data directory. If it is already running, open its existing page. Choose another port if a different program is using the requested port.
 
-## 使用流程
+## Usage
 
-1. 连接 iPhone，解锁并信任 Mac，在页面中选择设备；需要时点击「刷新设备」或「重新连接」。
-2. 点击「扫描卡片」。在 iPhone 中打开 Wallet 卡片，或双击侧边键、认证后切换付款卡。
-3. 本次扫描确认的卡片会出现在页面中。可逐张选择或拖入图片，也可选中多张后批量分配同一图片。
-4. 点击「停止扫描」，检查选中卡片和预览，再点击写入按钮。
-5. 写入完成后，在 iPhone 中强制退出并重新打开 Wallet 查看结果。
+1. Connect and unlock the iPhone, trust the Mac, and select the device in the page. Refresh the device list or reconnect if needed.
+2. Start a card scan. Open cards in Wallet on the iPhone, or double-click the side button, authenticate, and switch between payment cards.
+3. Cards confirmed during the current scan appear in the page. Choose or drop an image for each card, or select several cards and assign the same image to all of them.
+4. Stop scanning, check the selected cards and previews, then use the write button.
+5. After writing finishes, force-quit and reopen Wallet on the iPhone to see the result.
 
-图片在 Mac 上转换为 **1536 × 969 PNG**，按比例填满并居中裁切。支持系统图像工具可解码的常见格式，包括 PNG、JPEG、HEIC；单文件最多 30 MiB、48 MP、单边 16,384 像素。也可使用页面中的[卡面编辑器](docs/artwork.md)调整构图，再直接应用到选中的卡片；仍可下载 PNG。
+Images are converted on the Mac to **1536 × 969 PNG**, scaled proportionally to fill the frame, and cropped from the center. Common formats supported by the system image tools include PNG, JPEG, and HEIC. Each file is limited to 30 MiB, 48 MP, and 16,384 pixels on either side. Use the built-in [artwork editor](docs/artwork.md) to adjust the composition and apply it directly to selected cards, or download a PNG.
 
-### 保留的交互
+### Available controls
 
-- 设备选择、刷新、重连；扫描开始、停止与诊断。
-- 卡面预览、选择/拖放图片、批量分配、内置裁切编辑器、全选/取消选择、复制 ID。
-- 清除图片、移除本地记录、清空本地列表；这些操作不会删除手机中的卡片，也不会恢复原卡面。
-- 手动保存 ID；未经本次扫描确认的记录保持隐藏，不能写入。
-- 默认只写入选中且图片发生变化的卡片；全部未变化时可重新写入全部选中卡片。
-- 写入进度、成功/错误反馈、日志折叠/清空/自动滚动。
-- Wallet 本地缓存诊断、名称匹配、未确认卡片提示和按设备保存设置。
+- Device selection, refresh, and reconnect; scan start, stop, and diagnostics.
+- Artwork previews, image selection and drag-and-drop, bulk assignment, the built-in crop editor, select all or none, and copying card IDs.
+- Clear images, remove local records, or clear the local list. These actions do not delete cards from the iPhone or restore their original artwork.
+- Save IDs manually. Records remain hidden and cannot be written until confirmed by the current scan.
+- Write only selected cards whose images have changed by default. If all selected images are unchanged, you can write all selected cards again.
+- Write progress, success and error feedback, and collapsible logs with clear and auto-scroll controls.
+- Local Wallet cache diagnostics, name matching, unconfirmed-card notices, and settings saved separately for each device.
 
-### 扫描和缓存
+### Scanning and caches
 
-付款卡使用 NFC 激活事件与卡片资源路径进行识别。当前日志中的 ID 与某个远端设备缓存唯一匹配后，才补充该缓存中的其他付款卡。会员卡、票券等需要分别打开确认。
+Payment cards are identified through NFC activation events and card resource paths. Other payment cards from a cached remote-device record on the Mac are included only after an ID in the current log uniquely matches that cache. Membership cards and tickets must be opened individually for confirmation.
 
-Mac 缓存数量不是手机卡片总数，页面顺序也不是 Wallet 显示顺序。「读取缓存」只重读 Mac 上现有元数据，不会强制 iCloud 同步。扫描无结果时，检查日志是否出现 `Connected to the unified device log stream`，然后重新连接、解锁并扫描。系统日志中的 `<private>` 无法恢复。
+The Mac cache count is not the total number of cards on the phone, and the page order does not represent Wallet's display order. Refreshing the cache only rereads existing metadata on the Mac; it does not force an iCloud sync. If a scan finds nothing, check the logs for `Connected to the unified device log stream`, then reconnect, unlock, and scan again. Values shown as `<private>` in system logs cannot be recovered.
 
-详见[卡片识别和诊断](docs/wallet-discovery.md)、[连接与扫描排查](docs/troubleshooting.md)。
+See [card identification and diagnostics](docs/wallet-discovery.md) and [connection and scanning troubleshooting](docs/troubleshooting.md).
 
-## 本地数据
+## Local data
 
-默认保存在 `~/Library/Application Support/AirCard/`：
+Data is stored in `~/Library/Application Support/AirCard/` by default:
 
-- `state.json`：每台 iPhone 的卡片、选择状态、图片引用和成功写入签名。
-- `artwork/`：导入图片的本地副本；移动原始文件不会影响新上传的图片。
+- `state.json`: cards, selection state, image references, and successful-write signatures for each iPhone.
+- `artwork/`: local copies of imported images. Moving the original files does not affect newly uploaded artwork.
 
-第一次启动会读取旧版偏好设置和旧 JSON 卡片列表，并复制可用图片；旧文件保持原样。迁移记录仍须通过本次扫描确认。清空后的列表不会在重启时重新导入。找不到旧图片时，页面提示重新选图。
+On first launch, AirCard reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
 
-可用 `--data-dir /path/to/data` 指定独立数据目录。页面不连接外网、不使用 CDN，也不会把图片或设备日志上传到云端。本地服务校验 Host、Origin 和会话令牌；不要通过反向代理暴露给其他设备。
+Use `--data-dir /path/to/data` to specify a separate data directory. The page makes no external network connections, uses no CDN, and does not upload images or device logs to the cloud. The local service validates Host, Origin, and session tokens; do not expose it to other devices through a reverse proxy.
 
-## 仓库结构与验证
+## Repository layout and validation
 
-Python 模块统一位于 `backend/`，通过 `python3 -m backend` 启动；`backend/paths.py` 统一定位仓库中的静态页面和原生工具编译产物。
+Python modules live in `backend/`, with `python3 -m backend` as the entrypoint. `backend/paths.py` locates the repository root used to find static pages and compiled native tools.
 
-- `web/`：无框架的 HTML / CSS / JavaScript 界面。
-- `aircard_server.py`：仅回环地址的 HTTP 服务。
-- `wallet_service.py`、`wallet_store.py`、`wallet_discovery.py`：设备状态、持久化、扫描和任务调度。
-- `wallet_catalog.py`：Mac Wallet 元数据读取。
-- `image_processing.py`：基于 macOS `sips` 的图片标准化。
-- `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
-- `native/`：macOS 原生设备通信工具源码。
+- `web/`: the HTML / CSS / JavaScript interface, without a frontend framework.
+- `aircard_server.py`: the HTTP service, listening only on the loopback address.
+- `wallet_service.py`, `wallet_store.py`, `wallet_discovery.py`: device state, persistence, scanning, and task scheduling.
+- `wallet_catalog.py`: reads Wallet metadata on the Mac.
+- `image_processing.py`: image normalization using macOS `sips`.
+- `aircard_backend.py`, `apply_card_skin.py`, `card_assets.py`: artwork writing, asset generation, and cache cleanup.
+- `native/`: source code for native macOS device communication tools.
 
 ```sh
 make all
 make test
 ```
 
-测试按被测模块归类，目录统一命名为 `__tests__`：
+Tests are grouped by the component they cover, with every test directory named `__tests__`:
 
-- `backend/__tests__/`：Python 业务逻辑、HTTP 接口和启动入口。
-- `native/__tests__/`：原生设备发现和日志协议测试，包含 Python 编译运行器。
-- `web/__tests__/`：卡面编辑器及页面消息交互。
-- `__tests__/integration/`：原生日志到 Python 识别，以及 HTTP、图片处理、模拟写入和持久化的集成流程。
-- `__tests__/fixtures.py`：各组共用的模拟设备、进程和图片数据。
+- `backend/__tests__/`: Python business logic, HTTP endpoints, and entrypoints.
+- `native/__tests__/`: native device discovery and log protocol tests, including Python compilation and execution wrappers.
+- `web/__tests__/`: the artwork editor and page messaging.
+- `__tests__/integration/`: native log output to Python identification, plus the HTTP, image processing, simulated writing, and persistence workflow.
+- `__tests__/fixtures.py`: simulated devices, processes, and image data shared by the test suites.
 
-可以用 `make test-backend`、`make test-native`、`make test-web` 或 `make test-integration` 单独运行一组。
+Run a single suite with `make test-backend`, `make test-native`, `make test-web`, or `make test-integration`.
 
-Node.js 仅用于前端检查，不是运行依赖。自动化测试覆盖本地服务和模拟设备链路；真实 iPhone 上的最终显示效果需要实际写入验收。
+Node.js is needed only for frontend checks, not to run the app. Automated tests cover the local service and simulated device workflows; the final appearance on a real iPhone still requires an actual write and visual check.
