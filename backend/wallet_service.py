@@ -15,13 +15,13 @@ import threading
 import time
 from pathlib import Path
 
-from . import APP_NAME
+from . import APP_ID, APP_NAME
 from .paths import ROOT
 from .wallet_discovery import activation_ids, card_ids, is_wallet_line, valid_card_id
 from .wallet_store import WalletStore
 
 SCANNER_STOP_TIMEOUT = 5
-SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", "AirCard scanner: ")
+SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", f"{APP_ID} scanner: ", "AirCard scanner: ")
 
 
 def empty_catalog():
@@ -151,7 +151,7 @@ class WalletService:
 
     def _require_device(self, udid, *, mutation=False):
         if self._closed:
-            raise ValueError("apple-wallet-card-skinner is shutting down.")
+            raise ValueError(f"{APP_NAME} is shutting down.")
         if not self._device or udid != self._device["udid"]:
             raise ValueError("The selected iPhone changed or disconnected. Refresh devices and try again.")
         if not self._device.get("connected"):
@@ -173,7 +173,7 @@ class WalletService:
                 if not isinstance(payload, dict):
                     raise ValueError("Action payload must be an object.")
                 if self._closed:
-                    raise ValueError("apple-wallet-card-skinner is shutting down.")
+                    raise ValueError(f"{APP_NAME} is shutting down.")
                 if action == "logs.clear":
                     self._logs.clear()
                 elif action == "notices.clear":
@@ -625,8 +625,9 @@ class WalletService:
                     # Also understand helpers built before the project rename.
                     scanner_prefix = next((prefix for prefix in SCANNER_PREFIXES if line.startswith(prefix)), None)
                     if scanner_prefix:
-                        self._log(line)
-                        self._scanner_message = ("Scanner connected. Open Wallet and tap a card." if "Connected to the unified" in line else line.removeprefix(scanner_prefix))
+                        message = line.removeprefix(scanner_prefix)
+                        self._log(f"{APP_NAME} scanner: {message}")
+                        self._scanner_message = ("Scanner connected. Open Wallet and tap a card." if "Connected to the unified" in message else message)
                         continue
                     if "setactivepaymentapplet" in line.lower():
                         activation_buffer = line
@@ -750,13 +751,13 @@ class WalletService:
             for index, row in enumerate(targets):
                 with self._lock:
                     if self._closed:
-                        failure = "apple-wallet-card-skinner stopped before all selected cards were written."
+                        failure = f"{APP_NAME} stopped before all selected cards were written."
                         break
                     if (generation != self._generation or not self._device or
                             self._device["udid"] != udid or not self._device.get("connected")):
                         failure = "The USB connection changed. Rescan the iPhone before writing remaining cards."
                         break
-                with tempfile.TemporaryDirectory(prefix="apple-wallet-card-skinner-artwork-") as directory:
+                with tempfile.TemporaryDirectory(prefix=f"{APP_NAME}-artwork-") as directory:
                     source = Path(row["imagePath"]).read_bytes()
                     if hashlib.sha256(source).hexdigest() != row["signature"]:
                         raise RuntimeError("Artwork changed during preparation. Select it again and retry.")

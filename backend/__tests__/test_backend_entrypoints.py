@@ -19,7 +19,7 @@ class BackendEntrypointTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--no-browser", result.stdout)
         self.assertIn("--data-dir", result.stdout)
-        self.assertIn("apple-wallet-card-skinner", result.stdout)
+        self.assertIn("AppleWalletCardSkinner", result.stdout)
 
     def test_flash_module_rejects_invalid_id_before_native_write(self):
         result = subprocess.run(

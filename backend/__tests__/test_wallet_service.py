@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
-from backend import APP_NAME
+from backend import APP_ID, APP_NAME
 from backend.wallet_service import WalletService, empty_catalog
 from backend.wallet_store import WalletStore
 from __tests__.fixtures import A, B, C, FIRST, SECOND, Process, wait_for
@@ -24,6 +24,7 @@ class WalletStoreTests(unittest.TestCase):
             self.assertEqual(store.root, home / "Library/Application Support" / APP_NAME)
             self.assertTrue(store.path.is_file())
             self.assertFalse((home / "Library/Application Support/AirCard").exists())
+            self.assertFalse((home / "Library/Application Support" / APP_ID).exists())
 
     def test_existing_aircard_store_is_reused_without_moving_artwork(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -44,6 +45,36 @@ class WalletStoreTests(unittest.TestCase):
             self.assertEqual(artwork.read_bytes(), b"existing artwork")
             self.assertFalse((legacy.parent / APP_NAME).exists())
 
+    def test_slug_store_precedes_aircard_and_keeps_artwork_and_lock_in_place(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            support = home / "Library/Application Support"
+            old = WalletStore(support / "AirCard", home)
+            old.data["selected_udid"] = "older-phone"
+            old.save()
+            old.close()
+            previous = WalletStore(support / APP_ID, home)
+            artwork = previous.write_artwork(b"existing artwork")
+            previous.data["selected_udid"] = "saved-phone"
+            previous.records("saved-phone").append({"id": A, "confirmed": True, "selected": False, "imagePath": str(artwork)})
+            previous.save()
+            with patch("backend.wallet_store.Path.home", return_value=home):
+                # The renamed default must contend on the same legacy lock;
+                # creating a separate store would lose data and permit overlap.
+                with self.assertRaisesRegex(RuntimeError, f"Another {APP_NAME}"):
+                    WalletStore()
+            self.assertFalse((support / APP_NAME).exists())
+            previous.close()
+            with patch("backend.wallet_store.Path.home", return_value=home):
+                restored = WalletStore()
+            self.addCleanup(restored.close)
+            self.assertEqual(restored.root, support / APP_ID)
+            self.assertEqual(restored.data["selected_udid"], "saved-phone")
+            self.assertEqual(restored.records("saved-phone")[0]["imagePath"], str(artwork))
+            self.assertEqual(artwork.read_bytes(), b"existing artwork")
+            self.assertEqual(json.loads(old.path.read_text())["selected_udid"], "older-phone")
+            self.assertFalse((support / APP_NAME).exists())
+
     def test_renamed_data_directory_takes_precedence_even_when_empty(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
@@ -52,6 +83,10 @@ class WalletStoreTests(unittest.TestCase):
             legacy.data["selected_udid"] = "old-phone"
             legacy.save()
             legacy.close()
+            slug = WalletStore(support / APP_ID, home)
+            slug.data["selected_udid"] = "previous-phone"
+            slug.save()
+            slug.close()
             (support / APP_NAME).mkdir()
             with patch("backend.wallet_store.Path.home", return_value=home):
                 current = WalletStore()
@@ -59,12 +94,13 @@ class WalletStoreTests(unittest.TestCase):
             self.assertEqual(current.root, support / APP_NAME)
             self.assertIsNone(current.data["selected_udid"])
             self.assertEqual(json.loads(legacy.path.read_text())["selected_udid"], "old-phone")
+            self.assertEqual(json.loads(slug.path.read_text())["selected_udid"], "previous-phone")
 
-    def test_explicit_data_directory_overrides_both_default_directories(self):
+    def test_explicit_data_directory_overrides_all_default_directories(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             support = home / "Library/Application Support"
-            for name in ("AirCard", APP_NAME):
+            for name in ("AirCard", APP_ID, APP_NAME):
                 (support / name).mkdir(parents=True)
             override = home / "custom-data"
             with patch("backend.wallet_store.Path.home", return_value=home):
@@ -74,6 +110,7 @@ class WalletStoreTests(unittest.TestCase):
             self.assertTrue(current.path.is_file())
             self.assertFalse((support / APP_NAME / "state.json").exists())
             self.assertFalse((support / "AirCard" / "state.json").exists())
+            self.assertFalse((support / APP_ID / "state.json").exists())
 
     def test_imports_device_images_selections_hashes_and_clears_once(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -111,7 +148,7 @@ class WalletStoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             first = WalletStore(root / "data", root)
-            with self.assertRaisesRegex(RuntimeError, "Another apple-wallet-card-skinner"):
+            with self.assertRaisesRegex(RuntimeError, f"Another {APP_NAME}"):
                 WalletStore(root / "data", root)
             first.close()
             second = WalletStore(root / "data", root)
@@ -190,10 +227,12 @@ class WalletServiceTests(unittest.TestCase):
     def test_current_and_legacy_native_scanner_status_prefixes_are_understood(self):
         process = self.scan()
         for prefix, message in ((f"{APP_NAME} scanner: ", "Current helper ready"),
+                                (f"{APP_ID} scanner: ", "Previous slug helper ready"),
                                 ("AirCard scanner: ", "Previously built helper ready")):
             with self.subTest(prefix=prefix):
                 process.feed(prefix + message + "\n")
                 wait_for(lambda: self.service.snapshot()["scanner_message"] == message)
+                self.assertTrue(self.service.snapshot()["logs"][-1].endswith(f"{APP_NAME} scanner: {message}"))
         self.stop()
 
     def test_manual_and_saved_cards_hidden_until_current_scan(self):

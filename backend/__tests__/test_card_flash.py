@@ -53,7 +53,7 @@ class CardFlashTests(unittest.TestCase):
             with patch.object(writer, "_flash_unlocked", return_value=True) as write, redirect_stdout(output):
                 self.assertFalse(writer.cmd_flash(DEVICE_ID.lower(), CARD_ID, "unused.png"))
             write.assert_not_called()
-            self.assertIn("Another apple-wallet-card-skinner process", json.loads(output.getvalue())["message"])
+            self.assertIn("Another AppleWalletCardSkinner process", json.loads(output.getvalue())["message"])
         finally:
             process.communicate("release\n", timeout=5)
         with patch.object(writer, "_flash_unlocked", return_value=True) as write:

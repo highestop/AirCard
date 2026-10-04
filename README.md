@@ -1,4 +1,4 @@
-# Apple Wallet Card Skinner
+# AppleWalletCardSkinner
 
 A personal tool for customizing Apple Wallet card artwork. The interface runs in a browser, while a Python service and native USB tools on the Mac handle device operations:
 
@@ -81,14 +81,19 @@ See [card identification and diagnostics](docs/wallet-discovery.md) and [connect
 
 ## Local data
 
-Data is stored in `~/Library/Application Support/apple-wallet-card-skinner/` by default:
+New installations store data in `~/Library/Application Support/AppleWalletCardSkinner/` by default:
 
 - `state.json`: cards, selection state, image references, and successful-write signatures for each iPhone.
 - `artwork/`: local copies of imported images. Moving the original files does not affect newly uploaded artwork.
 
-If the new data directory does not exist and the previous `~/Library/Application Support/AirCard/` directory is present, the service continues using that directory. Existing cards, artwork, and write history remain in place. An existing directory under the new name takes precedence; `--data-dir` always overrides automatic selection.
+If that directory does not exist, the service reuses an existing
+`~/Library/Application Support/apple-wallet-card-skinner/` directory first,
+then `~/Library/Application Support/AirCard/`. It does not move existing files;
+cards, artwork, and write history remain in their current directory. An existing
+`AppleWalletCardSkinner` directory takes precedence, even when empty.
+`--data-dir` always overrides automatic selection.
 
-On first launch, apple-wallet-card-skinner reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
+On first launch, AppleWalletCardSkinner reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
 
 Use `--data-dir /path/to/data` to specify a separate data directory. The page makes no external network connections, uses no CDN, and does not upload images or device logs to the cloud. The local service validates Host, Origin, and session tokens; do not expose it to other devices through a reverse proxy.
 

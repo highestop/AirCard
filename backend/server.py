@@ -1,4 +1,4 @@
-"""Loopback-only HTTP transport for apple-wallet-card-skinner's local Wallet controller."""
+"""Loopback-only HTTP transport for AppleWalletCardSkinner's local Wallet controller."""
 from __future__ import annotations
 
 import argparse
@@ -71,7 +71,7 @@ class LocalRequestHandler(BaseHTTPRequestHandler):
 
     def _allowed(self, authenticated=True, allow_navigation=False):
         if self.headers.get("Host") != self.server.origin.removeprefix("http://"):
-            self._error(403, "Open apple-wallet-card-skinner using its 127.0.0.1 address.")
+            self._error(403, f"Open {APP_NAME} using its 127.0.0.1 address.")
             return False
         origin = self.headers.get("Origin")
         if origin and origin != self.server.origin:
@@ -80,7 +80,7 @@ class LocalRequestHandler(BaseHTTPRequestHandler):
         navigation = (allow_navigation and self.headers.get("Sec-Fetch-Mode") == "navigate"
                       and self.headers.get("Sec-Fetch-Dest") == "document")
         if self.headers.get("Sec-Fetch-Site") not in (None, "none", "same-origin") and not navigation:
-            self._error(403, "Open apple-wallet-card-skinner directly in a browser tab.")
+            self._error(403, f"Open {APP_NAME} directly in a browser tab.")
             return False
         # Accept the previous header only when the canonical header is absent,
         # so an invalid new header cannot be bypassed through the legacy alias.
@@ -88,7 +88,7 @@ class LocalRequestHandler(BaseHTTPRequestHandler):
         if token is None:
             token = self.headers.get("X-AirCard-Token", "")
         if authenticated and not hmac.compare_digest(token.encode("utf-8"), self.server.token.encode("ascii")):
-            self._error(403, "apple-wallet-card-skinner session expired. Reload this page.")
+            self._error(403, f"{APP_NAME} session expired. Reload this page.")
             return False
         return True
 
@@ -198,7 +198,7 @@ class LocalRequestHandler(BaseHTTPRequestHandler):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Open apple-wallet-card-skinner's local browser interface.")
+    parser = argparse.ArgumentParser(description=f"Open {APP_NAME}'s local browser interface.")
     parser.add_argument("--port", type=int, default=8765, help="Local port (default: 8765)")
     parser.add_argument("--no-browser", action="store_true", help="Print the address without opening a tab")
     parser.add_argument("--data-dir", type=Path, help="Override the local settings and artwork directory")
@@ -206,17 +206,17 @@ def main(argv=None):
     if not 0 <= args.port <= 65535:
         parser.error("port must be between 0 and 65535")
     if sys.platform != "darwin":
-        parser.error("apple-wallet-card-skinner's USB helpers require macOS.")
+        parser.error(f"{APP_NAME}'s USB helpers require macOS.")
     from .wallet_service import WalletService
     try:
         service = WalletService(data_dir=args.data_dir, connect_on_launch=False)
     except (OSError, ValueError, RuntimeError) as error:
-        parser.exit(1, f"Cannot open apple-wallet-card-skinner's local data: {error}\n")
+        parser.exit(1, f"Cannot open {APP_NAME}'s local data: {error}\n")
     try:
         server = LocalServer(service, args.port)
     except OSError as error:
         service.close()
-        parser.exit(1, f"Cannot start apple-wallet-card-skinner: {error}. Try --port 8766.\n")
+        parser.exit(1, f"Cannot start {APP_NAME}: {error}. Try --port 8766.\n")
 
     def stop(_signum, _frame):
         # shutdown() must run off the serve_forever thread. The finally block
@@ -225,7 +225,7 @@ def main(argv=None):
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-    print(f"apple-wallet-card-skinner is ready: {server.origin}", flush=True)
+    print(f"{APP_NAME} is ready: {server.origin}", flush=True)
     print("Press Ctrl+C to stop. An active card write will finish cleanup first.", flush=True)
     service.dispatch("devices.refresh", {})
     if not args.no_browser:

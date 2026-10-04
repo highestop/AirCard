@@ -12,6 +12,7 @@ import struct
 import time
 import subprocess
 
+from . import APP_NAME
 from .paths import ROOT
 
 
@@ -145,8 +146,8 @@ def read_device_presence(*, socket_path="/var/run/usbmuxd", timeout=1.0) -> list
     The deadline bounds the whole exchange, including fragmented responses.
     Errors propagate so the controller can distinguish failure from no devices.
     """
-    payload = plistlib.dumps({"MessageType": "ListDevices", "ClientVersionString": "apple-wallet-card-skinner",
-                             "ProgName": "apple-wallet-card-skinner", "kLibUSBMuxVersion": 3})
+    payload = plistlib.dumps({"MessageType": "ListDevices", "ClientVersionString": APP_NAME,
+                             "ProgName": APP_NAME, "kLibUSBMuxVersion": 3})
     deadline = time.monotonic() + timeout
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(timeout)

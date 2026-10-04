@@ -10,7 +10,7 @@ import plistlib
 import tempfile
 from pathlib import Path
 
-from . import APP_NAME
+from . import APP_ID, APP_NAME
 from .wallet_discovery import unique_records, valid_card_id
 
 _PREFIX = "mak5er.aircard.wallet.v2."
@@ -19,9 +19,14 @@ _PREFIX = "mak5er.aircard.wallet.v2."
 def default_data_dir() -> Path:
     support = Path.home() / "Library/Application Support"
     current = support / APP_NAME
-    legacy = support / "AirCard"
     # Reuse existing artwork and state in place; do not copy or move user files.
-    return legacy if not current.exists() and legacy.is_dir() else current
+    if current.exists():
+        return current
+    for name in (APP_ID, "AirCard"):
+        legacy = support / name
+        if legacy.is_dir():
+            return legacy
+    return current
 
 
 class WalletStore:
@@ -36,13 +41,13 @@ class WalletStore:
             fcntl.flock(self._lock_stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             self.close()
-            raise RuntimeError("Another apple-wallet-card-skinner service is using this data directory. Stop it before starting another instance.") from error
+            raise RuntimeError(f"Another {APP_NAME} service is using this data directory. Stop it before starting another instance.") from error
         try:
             if self.path.exists():
                 # Do not silently overwrite a damaged store or re-import deleted cards.
                 self.data = json.loads(self.path.read_text("utf-8"))
                 if not isinstance(self.data, dict) or self.data.get("version") != 1 or not isinstance(self.data.get("devices"), dict):
-                    raise ValueError("Unsupported or damaged apple-wallet-card-skinner state.json")
+                    raise ValueError(f"Unsupported or damaged {APP_NAME} state.json")
                 self.data.setdefault("flashed", {})
                 self.data.setdefault("legacy", [])
             else:

@@ -1,3 +1,5 @@
 """Local Python service and Wallet synchronization logic."""
 
-APP_NAME = "apple-wallet-card-skinner"
+APP_NAME = "AppleWalletCardSkinner"
+# Keep the existing identifier for compatibility with saved paths and helpers.
+APP_ID = "apple-wallet-card-skinner"
