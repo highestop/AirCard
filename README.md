@@ -15,7 +15,7 @@ Browser → http://127.0.0.1:8765 → Python → native macOS device tools → i
 
 Artwork writing uses the existing iOS 18+ implementation. Private device interfaces and Wallet logs can change between system versions; compatibility still depends on testing with the actual device.
 
-## Start apple-wallet-card-skinner
+## Start
 
 ```sh
 git clone https://github.com/highestop/apple-wallet-card-skinner.git
