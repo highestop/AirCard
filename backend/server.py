@@ -136,6 +136,7 @@ class LocalRequestHandler(BaseHTTPRequestHandler):
                     "/": ROOT / "web/index.html",
                     "/index.html": ROOT / "web/index.html",
                     "/app.js": ROOT / "web/app.js",
+                    "/device-state.js": ROOT / "web/device-state.js",
                     "/artwork-bridge.js": ROOT / "web/artwork-bridge.js",
                     "/style.css": ROOT / "web/style.css",
                     "/artwork/": ROOT / "web/artwork.html",

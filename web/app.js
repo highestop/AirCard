@@ -58,7 +58,7 @@
   function cards() { return Array.isArray(state?.cards) ? state.cards : []; }
   function readyCards() { return cards().filter((card) => card.selected && card.has_image && !card.image_missing); }
   function changedCards() { return readyCards().filter((card) => !card.is_flashed); }
-  function deviceConnected() { return connected && !!state?.device?.connected; }
+  function deviceConnected() { return WalletDeviceState.deviceState(WalletDeviceState.deviceSelection(state, connected).device, connected).usable; }
   function busy() { return pendingAction || !connected || !!state?.flashing || !!state?.checking; }
   function editingDisabled() { return busy() || !deviceConnected(); }
 
@@ -190,27 +190,24 @@
   }
 
   function renderDevices() {
-    const devices = Array.isArray(state?.devices) ? [...state.devices] : [];
-    if (state?.device?.udid && !devices.some((device) => device.udid === state.device.udid)) devices.unshift(state.device);
-    const signature = JSON.stringify(devices.map((device) => [device.udid, device.name, device.product, device.connected]));
-    if (signature !== deviceSignature || !ui["device-select"].options.length) {
-      deviceSignature = signature;
-      const options = devices.map((device) => {
-        const label = device.name || device.product || "iPhone";
-        const duplicateName = devices.filter((item) => (item.name || item.product || "iPhone") === label).length > 1;
-        return new Option(`${label}${duplicateName ? ` · …${device.udid.slice(-6)}` : ""}${device.connected === false ? "（已断开）" : ""}`, device.udid);
+    const selection = WalletDeviceState.deviceSelection(state, connected);
+    if (selection.signature !== deviceSignature || !ui["device-select"].options.length) {
+      deviceSignature = selection.signature;
+      const options = selection.options.map((item) => {
+        const option = new Option(item.label, item.value);
+        option.disabled = item.placeholder;
+        return option;
       });
-      if (!options.length) options.push(new Option(connected ? "未检测到 iPhone" : "本地服务未连接", ""));
       ui["device-select"].replaceChildren(...options);
     }
-    ui["device-select"].value = deviceID();
-    if (!devices.length) text(ui["device-select"].options[0], connected ? "未检测到 iPhone" : "本地服务未连接");
-    ui["device-select"].disabled = busy() || !devices.length;
-    ui["device-dot"].classList.toggle("connected", deviceConnected());
-    const device = state?.device;
-    text(ui["device-detail"], deviceConnected()
-      ? [device.product, device.version ? `iOS ${device.version}` : "", "设备已连接"].filter(Boolean).join(" · ")
-      : "通过 USB 连接并信任此 Mac");
+    ui["device-select"].value = selection.value;
+    ui["device-select"].disabled = busy() || !selection.hasDevices;
+    const status = WalletDeviceState.deviceState(selection.device, connected);
+    ui["device-dot"].classList.toggle("connected", status.usable);
+    const device = selection.device;
+    const detail = [status.label, status.usable ? [device.product, device.version ? `iOS ${device.version}` : ""].filter(Boolean).join(" · ") : status.hint].filter(Boolean).join(" · ");
+    text(ui["device-detail"], detail);
+    ui["device-detail"].title = detail;
     ui["refresh-devices"].disabled = busy();
     ui["refresh-devices"].classList.toggle("working", !!state?.checking);
   }
@@ -245,7 +242,7 @@
     ui.flash.disabled = editing || scanning || !!state?.reading_cache || ready === 0;
     ui.flash.classList.toggle("working", !!state?.flashing);
     text(ui.flash.querySelector("span"), state?.flashing ? "正在写入…" : changed ? `写入卡面 · ${changed} 张有变化` : ready ? `重新写入 · ${ready} 张` : "写入卡面");
-    text(ui["status-text"], !connected ? "本地服务未连接" : pendingMessage || state?.status || (deviceConnected() ? "准备就绪" : "等待连接 iPhone"));
+    text(ui["status-text"], WalletDeviceState.statusText(state, connected, pendingMessage));
     text(ui["selection-summary"], scanning ? "扫描完成后，停止扫描即可写入卡面" : cards().length
       ? `已选 ${selectedCount} / ${cards().length} 张 · ${changed} 张有变化 · ${ready - changed} 张已有成功写入记录`
       : "选择卡片并添加图片后即可写入");

@@ -24,6 +24,7 @@ test-native:
 
 test-web:
 	node --check web/app.js
+	node --check web/device-state.js
 	node --check web/artwork-bridge.js
 	node --test web/__tests__/*.test.cjs
 

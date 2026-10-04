@@ -37,7 +37,7 @@ The service listens only on `127.0.0.1`. Use the full address printed in the ter
 
 ## Usage
 
-1. Connect and unlock the iPhone, trust the Mac, and select the device in the page. Refresh the device list or reconnect if needed.
+1. Connect and unlock the iPhone, trust the Mac, and select the device in the page. The selector distinguishes a ready USB connection from wireless discovery, an unavailable session, and disconnection. Only a ready USB connection enables scanning and writing. Device presence updates automatically; use refresh to retry a session check after unlocking or trusting the Mac.
 2. Start a card scan. Open cards in Wallet on the iPhone, or double-click the side button, authenticate, and switch between payment cards.
 3. Cards confirmed during the current scan appear in the page. Choose or drop an image for each card, or select several cards and assign the same image to all of them.
 4. Stop scanning, check the selected cards and previews, then use the write button.

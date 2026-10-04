@@ -31,10 +31,19 @@ def empty_catalog():
 class WalletService:
     def __init__(self, data_dir: Path | None = None, *, discover_devices=None,
                  helper_finder=None, catalog_reader=None, popen=None,
-                 image_preparer=None, legacy_home=None, connect_on_launch=True):
-        from .devices import find_device_helper, get_all_connected_devices
+                 image_preparer=None, legacy_home=None, connect_on_launch=True,
+                 presence_reader=None, presence_interval=2.0):
+        from .devices import find_device_helper, get_all_connected_devices, read_device_presence
         from .wallet_catalog import build_catalog
         self._discover_devices = discover_devices or get_all_connected_devices
+        # Synthetic discovery must never cause a real device probe in tests.
+        self._presence_reader = presence_reader or (read_device_presence if discover_devices is None else None)
+        self._presence_interval = max(0.01, presence_interval)
+        self._presence_stop = threading.Event()
+        self._presence_snapshot = None
+        self._presence_failed = False
+        self._pending_device_probe = False
+        self._refresh_request = 0
         self._helper_finder = helper_finder or find_device_helper
         self._read_catalog = catalog_reader or (lambda ids, product: build_catalog(Path.home() / "Library/Passes", ids, product))
         self._popen = popen or subprocess.Popen
@@ -43,6 +52,7 @@ class WalletService:
         self._store = WalletStore(data_dir, legacy_home)
         self._devices = []
         self._device = None
+        self._selected_udid = self._store.data.get("selected_udid")
         self._records = []
         self._verified = set()
         self._pending_activations = set()
@@ -66,6 +76,10 @@ class WalletService:
         self._image_cache = {}
         if connect_on_launch:
             self.dispatch("devices.refresh", {})
+        self._presence_thread = None
+        if self._presence_reader:
+            with self._lock:
+                self._presence_thread = self._start_thread(self._monitor_presence)
 
     def _touch(self):
         self._revision += 1
@@ -131,8 +145,10 @@ class WalletService:
     def _require_device(self, udid, *, mutation=False):
         if self._closed:
             raise ValueError("apple-wallet-card-skinner is shutting down.")
-        if not self._device or not self._device.get("connected") or udid != self._device["udid"]:
+        if not self._device or udid != self._device["udid"]:
             raise ValueError("The selected iPhone changed or disconnected. Refresh devices and try again.")
+        if not self._device.get("connected"):
+            raise ValueError("A ready USB connection is required. Connect the iPhone by USB, unlock it and trust this Mac, then refresh devices.")
         if mutation and (self._flashing or self._checking):
             raise ValueError("Wait for the current device operation to finish.")
 
@@ -166,14 +182,17 @@ class WalletService:
                     if target is not None and (not isinstance(target, str) or len(target) > 128):
                         raise ValueError("Invalid device identifier.")
                     if target is None:
-                        target = self._device["udid"] if self._device else self._store.data.get("selected_udid")
+                        target = self._selected_udid
+                    self._selected_udid = target
                     self._checking = True
                     self._error = None
                     self._generation += 1
                     generation = self._generation
+                    self._refresh_request += 1
+                    request = self._refresh_request
                     self._stop_scan_locked()
                     self._status = "Checking connected devices…"
-                    self._start_thread(self._refresh_devices, target, generation)
+                    self._start_thread(self._refresh_devices, target, generation, request)
                 else:
                     self._require_device(payload.get("udid"), mutation=action != "scan.stop")
                     if action == "scan.start":
@@ -256,62 +275,193 @@ class WalletService:
             row = self._card(card_id)
             return Path(row["imagePath"]) if row.get("imagePath") and Path(row["imagePath"]).is_file() else None
 
+    @staticmethod
+    def _connection_state(device):
+        if not device:
+            return None
+        return tuple(device.get(key) for key in ("udid", "present", "transport", "session_state", "connected"))
+
     def _activate_locked(self, device):
         old = self._device["udid"] if self._device else None
         new = device["udid"] if device else None
-        self._device = device
-        if old != new:
+        if self._connection_state(self._device) != self._connection_state(device):
+            # A reconnected phone needs fresh scan evidence, even with the same
+            # UDID. Stale scanner and catalog workers cannot restore old cards.
+            self._generation += 1
+            self._stop_scan_locked()
             self._catalog_generation += 1
             self._reading_cache = False
             self._catalog = empty_catalog()
             self._verified.clear()
             self._pending_activations.clear()
-            self._records = self._store.records(new) if new else []
             self._scanner_message = "Open Wallet and scan cards to verify this iPhone's saved entries."
-            if self._catalog_timer:
-                self._catalog_timer.cancel()
+        self._device = device
+        if old != new:
+            self._records = self._store.records(new) if new else []
         if new:
-            self._store.data["selected_udid"] = new
-            self._store.save()
+            self._selected_udid = new
+            if self._store.data.get("selected_udid") != new:
+                self._store.data["selected_udid"] = new
+                self._store.save()
 
-    def _refresh_devices(self, target, generation):
+    def _device_status_locked(self):
+        device = self._device
+        if device and device.get("connected"):
+            status = "USB connected to " + device.get("name", "iPhone")
+        elif device and device.get("present") is False:
+            status = "Selected iPhone disconnected. Connect it by USB."
+        elif device and device.get("present") is None:
+            status = "Device connection status is unavailable. Retrying automatically."
+        elif device and device.get("transport") == "network":
+            status = "iPhone detected over Wi-Fi. Connect it by USB to continue."
+        elif device and device.get("transport") == "usb" and device.get("session_state") == "unpaired":
+            status = "USB device is not trusted. Unlock it and trust this Mac, then refresh devices."
+        elif device:
+            status = "Device is unavailable. Unlock it and check the USB connection, then refresh devices."
+        else:
+            status = "Selected iPhone is unavailable." if self._selected_udid else "No iPhone found. Connect via USB."
+        if not self._flashing:
+            self._status = status
+        if not device or not device.get("connected"):
+            self._scanner_message = status
+
+    def _merge_presence_locked(self, metadata, presence, *, preserve_session, metadata_refresh=False):
+        from .devices import format_device
+        known = {row["udid"].lower(): row for row in self._devices}
+        if metadata_refresh:
+            # An omitted endpoint has no current session result. Its cached
+            # name is useful, but its previous readiness cannot authorize USB.
+            known = {key: dict(row, session_state="unavailable") for key, row in known.items()}
+        for row in metadata:
+            key = row["udid"].lower()
+            if key in known:
+                previous = known[key]
+                row = dict(row, udid=previous["udid"])
+                for field in ("name", "product", "version"):
+                    if not row.get(field) or (field == "name" and row[field] == "未知 Apple 设备"):
+                        row[field] = previous.get(field, row.get(field, ""))
+            elif self._selected_udid and self._selected_udid.lower() == key:
+                row = dict(row, udid=self._selected_udid)
+            known[key] = row
+        if self._device:
+            known.setdefault(self._device["udid"].lower(), self._device)
+        if presence is None:
+            return [format_device(dict(row, present=None, transport="unknown", session_state="unavailable"))
+                    for row in known.values()]
+        rows = []
+        for udid, transport in presence.items():
+            previous = known.get(udid, {"udid": udid})
+            same_connection = previous.get("present", True) is True and previous.get("transport") == transport
+            session = previous.get("session_state", "unavailable") if same_connection and preserve_session else "unavailable"
+            rows.append(format_device(dict(previous, present=True, transport=transport, session_state=session)))
+        selected = self._selected_udid.lower() if self._selected_udid else None
+        if selected in known and selected not in presence:
+            rows.append(format_device(dict(known[selected], present=False, transport="unknown", session_state="unavailable")))
+        return rows
+
+    def _apply_presence(self, result):
+        """Apply a read-only transport snapshot without interrupting stable work."""
+        with self._lock:
+            if self._closed:
+                return
+            previous = {row["udid"].lower(): row for row in self._devices}
+            if result is None:
+                self._presence_snapshot = None
+                self._presence_failed = True
+                devices = self._merge_presence_locked([], None, preserve_session=False)
+            else:
+                presence = {}
+                for row in result:
+                    if not isinstance(row, dict) or not isinstance(row.get("udid"), str) or row.get("transport") not in ("usb", "network", "unknown"):
+                        raise ValueError("Invalid device presence response.")
+                    key = row["udid"].lower()
+                    if key not in presence or row["transport"] == "usb":
+                        presence[key] = row["transport"]
+                for udid, transport in presence.items():
+                    old = previous.get(udid, {})
+                    if transport == "usb" and (old.get("present") is not True or old.get("transport") != "usb"):
+                        self._pending_device_probe = True
+                self._presence_snapshot = presence
+                self._presence_failed = False
+                devices = self._merge_presence_locked([], presence, preserve_session=True)
+            if devices != self._devices:
+                old_state = self._connection_state(self._device)
+                self._devices = devices
+                target = self._selected_udid
+                device = next((row for row in devices if target and row["udid"].lower() == target.lower()), None)
+                self._activate_locked(device)
+                if old_state != self._connection_state(device):
+                    self._device_status_locked()
+                self._touch()
+
+    def _monitor_presence(self):
+        while not self._presence_stop.wait(self._presence_interval):
+            try:
+                result = self._presence_reader()
+                if not isinstance(result, list):
+                    raise ValueError("Invalid device presence response.")
+                self._apply_presence(result)
+            except Exception:
+                self._apply_presence(None)
+            with self._lock:
+                if self._closed:
+                    return
+                # Opening a metadata session is separate from passive polling.
+                # Probe a newly arrived USB device only after active work ends.
+                if (self._pending_device_probe and not self._presence_failed and not self._checking
+                        and not self._scanning and not self._flashing
+                        and not (self._scan_thread and self._scan_thread.is_alive())):
+                    self._pending_device_probe = False
+                    self.dispatch("devices.refresh", {})
+
+    def _refresh_devices(self, target, generation, request):
         try:
             scan = self._scan_thread
             if scan and scan is not threading.current_thread():
                 scan.join()
             if not self._helper_finder():
                 raise RuntimeError("Device tools are missing. Run make to build device_helper.")
-            devices = self._discover_devices()
-            devices = [dict(row, connected=True) for row in devices if isinstance(row, dict) and isinstance(row.get("udid"), str)]
-            device = next((row for row in devices if row["udid"] == target), None) if target else next(iter(devices), None)
+            from .devices import format_device
+            devices = [format_device(row) for row in self._discover_devices()
+                       if isinstance(row, dict) and isinstance(row.get("udid"), str)]
             with self._lock:
-                if self._closed or generation != self._generation:
+                if self._closed or request != self._refresh_request:
+                    return
+                # Never resurrect a phone after a newer passive disconnect.
+                if self._presence_failed or self._presence_snapshot is not None:
+                    devices = self._merge_presence_locked(devices, self._presence_snapshot,
+                                                           preserve_session=generation == self._generation, metadata_refresh=True)
+                elif generation != self._generation:
                     return
                 self._devices = devices
+                device = next((row for row in devices if target and row["udid"].lower() == target.lower()), None) if target else next(iter(devices), None)
                 self._activate_locked(device)
-                self._checking = False
+                self._device_status_locked()
                 if device:
-                    self._status = "Connected to " + device.get("name", "iPhone")
                     self._log(self._status)
-                    self._refresh_catalog_locked()
+                    if device.get("connected"):
+                        self._refresh_catalog_locked()
                 else:
-                    self._status = "Selected iPhone is unavailable." if target else "No iPhone found. Connect via USB."
                     self._scanner_message = "Connect, unlock and trust this Mac, then refresh devices."
                     if target:
                         self._error = "The selected iPhone is not connected. Choose a connected device explicitly."
-                    self._touch()
+                self._touch()
         except Exception as error:
             with self._lock:
-                if not self._closed and generation == self._generation:
-                    self._checking = False
-                    self._devices = []
-                    self._activate_locked(None)
+                if not self._closed and request == self._refresh_request:
+                    self._devices = self._merge_presence_locked([], None, preserve_session=False)
+                    self._activate_locked(next((row for row in self._devices if target and row["udid"].lower() == target.lower()), None))
                     self._error = str(error)
                     self._status = "Device detection failed."
                     self._log(str(error))
+        finally:
+            with self._lock:
+                if request == self._refresh_request:
+                    self._checking = False
+                    self._touch()
 
     def _refresh_catalog_locked(self):
-        if not self._device or self._closed:
+        if not self._device or not self._device.get("connected") or self._closed:
             return
         self._catalog_generation += 1
         request = self._catalog_generation
@@ -544,7 +694,7 @@ class WalletService:
         self._error = self._success = None
         self._status = "Preparing card artwork…"
         self._log(f"Writing {len(targets)} card(s)." + (" All selected artwork is unchanged; writing again." if not changed else f" Skipping {len(selected) - len(changed)} unchanged card(s)."))
-        self._start_thread(self._flash_worker, udid, targets)
+        self._start_thread(self._flash_worker, udid, targets, self._generation)
 
     def _prepare_image(self, data):
         if self._image_preparer:
@@ -552,7 +702,7 @@ class WalletService:
         from .image_processing import prepare_image
         return prepare_image(data)
 
-    def _flash_worker(self, udid, targets):
+    def _flash_worker(self, udid, targets, generation):
         failure = None
         try:
             for index, row in enumerate(targets):
@@ -560,15 +710,23 @@ class WalletService:
                     if self._closed:
                         failure = "apple-wallet-card-skinner stopped before all selected cards were written."
                         break
+                    if (generation != self._generation or not self._device or
+                            self._device["udid"] != udid or not self._device.get("connected")):
+                        failure = "The USB connection changed. Rescan the iPhone before writing remaining cards."
+                        break
                 with tempfile.TemporaryDirectory(prefix="apple-wallet-card-skinner-artwork-") as directory:
                     source = Path(row["imagePath"]).read_bytes()
                     if hashlib.sha256(source).hexdigest() != row["signature"]:
                         raise RuntimeError("Artwork changed during preparation. Select it again and retry.")
                     image = Path(directory) / "card.png"
                     image.write_bytes(self._prepare_image(source))
-                    process = self._popen([sys.executable, "-u", "-m", "backend.writer", "--flash", udid, row["id"], str(image)],
-                                          cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                          start_new_session=True, text=True, encoding="utf-8", errors="replace", bufsize=1)
+                    with self._lock:
+                        if (self._closed or generation != self._generation or not self._device
+                                or not self._device.get("connected") or self._device["udid"] != udid):
+                            raise RuntimeError("The USB connection changed. Rescan the iPhone before writing remaining cards.")
+                        process = self._popen([sys.executable, "-u", "-m", "backend.writer", "--flash", udid, row["id"], str(image)],
+                                              cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                              start_new_session=True, text=True, encoding="utf-8", errors="replace", bufsize=1)
                     success = False
                     reported_error = False
                     try:
@@ -613,6 +771,8 @@ class WalletService:
         finally:
             with self._lock:
                 self._flashing = False
+                if not failure and generation != self._generation:
+                    failure = "The USB connection changed. Rescan the iPhone before writing remaining cards."
                 if failure:
                     self._error = failure
                     self._status = "Card writing stopped."
@@ -627,6 +787,7 @@ class WalletService:
     def close(self):
         with self._lock:
             self._closed = True
+            self._presence_stop.set()
             self._stop_scan_locked()
             threads = list(self._threads)
         # Scanner is read-only and may be terminated. A write runs through its
