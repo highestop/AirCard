@@ -4,6 +4,7 @@ import json
 import plistlib
 import queue
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -11,8 +12,8 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
-from wallet_service import WalletService, empty_catalog
-from wallet_store import WalletStore
+from backend.wallet_service import WalletService, empty_catalog
+from backend.wallet_store import WalletStore
 
 A = "A" * 27 + "="
 B = "B" * 27 + "="
@@ -153,6 +154,8 @@ class WalletServiceTests(unittest.TestCase):
             if "syslog" in command:
                 process = Process()
             else:
+                self.assertEqual(command[:5], [sys.executable, "-u", "-m", "backend.aircard_backend", "--flash"])
+                self.assertEqual(Path(kwargs["cwd"]), Path(__file__).resolve().parents[1])
                 self.assertTrue(kwargs.get("start_new_session"), "Ctrl+C must not interrupt native write cleanup")
                 process = self.flash_results.pop(0) if self.flash_results else Process(json.dumps({"type": "success", "step": 8, "total": 8, "message": "Updated"}) + "\n")
             self.processes.append(process)
@@ -264,7 +267,7 @@ class WalletServiceTests(unittest.TestCase):
         process = self.scan(A)
         process.terminate = lambda: None
         process.kill = lambda: process.end(-9)
-        with patch("wallet_service.SCANNER_STOP_TIMEOUT", 0.02):
+        with patch("backend.wallet_service.SCANNER_STOP_TIMEOUT", 0.02):
             self.stop()
         self.assertEqual(process.returncode, -9)
         self.assertFalse(self.service.snapshot()["scanning"])

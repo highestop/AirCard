@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from aircard import format_device, get_all_connected_devices
+from backend.aircard import format_device, get_all_connected_devices
 
 
 MOCK_RAW_DEVICES = [
@@ -43,7 +43,7 @@ class DeviceSelectionTests(unittest.TestCase):
         self.assertEqual(unpaired["name"], "Locked / Unpaired Device")
         self.assertEqual(unpaired["product"], "")
 
-    @patch("aircard.list_devices", return_value=MOCK_RAW_DEVICES)
+    @patch("backend.aircard.list_devices", return_value=MOCK_RAW_DEVICES)
     def test_get_all_connected_devices(self, mock_list):
         devices = get_all_connected_devices()
         self.assertEqual(len(devices), 4)

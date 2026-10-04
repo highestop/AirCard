@@ -11,7 +11,7 @@ AIRTRAFFIC := /System/Library/PrivateFrameworks/AirTrafficHost.framework/AirTraf
 all: build/device_helper build/airtraffic_host
 
 run: all
-	python3 aircard.py
+	python3 -m backend
 
 test:
 	python3 -m unittest discover -s tests -v

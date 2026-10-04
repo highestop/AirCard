@@ -8,7 +8,7 @@ import zlib
 from pathlib import Path
 from unittest.mock import patch
 
-from image_processing import HEIGHT, MAX_INPUT_BYTES, WIDTH, prepare_image
+from backend.image_processing import HEIGHT, MAX_INPUT_BYTES, WIDTH, prepare_image
 
 
 def png_image(width, height, color):
@@ -107,14 +107,14 @@ class ImageProcessingTests(unittest.TestCase):
                 prepare_image(data)
 
     def test_upload_size_is_checked_before_decoding(self):
-        with patch("image_processing._inspect_image") as inspect:
+        with patch("backend.image_processing._inspect_image") as inspect:
             with self.assertRaisesRegex(ValueError, "30 MiB"):
                 prepare_image(b"x" * (MAX_INPUT_BYTES + 1))
         inspect.assert_not_called()
 
     def test_pixel_and_side_limits_are_checked_before_conversion(self):
         for size in ((7000, 7000, 1), (16_385, 1, 1)):
-            with self.subTest(size=size), patch("image_processing._inspect_image", return_value=size):
+            with self.subTest(size=size), patch("backend.image_processing._inspect_image", return_value=size):
                 with self.assertRaisesRegex(ValueError, "48 megapixels"):
                     prepare_image(b"image")
 

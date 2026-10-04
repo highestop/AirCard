@@ -10,7 +10,7 @@ import plistlib
 import tempfile
 from pathlib import Path
 
-from wallet_discovery import unique_records, valid_card_id
+from .wallet_discovery import unique_records, valid_card_id
 
 DEFAULT_DATA_DIR = Path.home() / "Library/Application Support/AirCard"
 _PREFIX = "mak5er.aircard.wallet.v2."

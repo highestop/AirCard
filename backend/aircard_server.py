@@ -14,7 +14,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-ROOT = Path(__file__).resolve().parent
+from .paths import ROOT
+
 MAX_IMAGE_BYTES = 30 * 1024 * 1024
 MAX_JSON_BYTES = 64 * 1024
 WEB_CSP = (
@@ -124,7 +125,7 @@ class AirCardHandler(BaseHTTPRequestHandler):
                     return
                 if source.stat().st_size > MAX_IMAGE_BYTES:
                     raise ValueError("Artwork exceeds the 30 MiB limit.")
-                from image_processing import prepare_image
+                from .image_processing import prepare_image
                 self._send(200, prepare_image(source.read_bytes()), "image/png")
             else:
                 files = {
@@ -174,7 +175,7 @@ class AirCardHandler(BaseHTTPRequestHandler):
                 card_ids = query.get("card_id", [])
                 if not udid or not card_ids or len(card_ids) > 256:
                     raise ValueError("Select at least one card on the connected iPhone.")
-                from image_processing import prepare_image
+                from .image_processing import prepare_image
                 png = prepare_image(self._body(MAX_IMAGE_BYTES))
                 self.server.service.assign_artwork(udid, card_ids, png)
             else:
@@ -199,7 +200,7 @@ def main(argv=None):
         parser.error("port must be between 0 and 65535")
     if sys.platform != "darwin":
         parser.error("AirCard's USB helpers require macOS.")
-    from wallet_service import WalletService
+    from .wallet_service import WalletService
     try:
         service = WalletService(data_dir=args.data_dir, connect_on_launch=False)
     except (OSError, ValueError, RuntimeError) as error:

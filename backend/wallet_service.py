@@ -15,10 +15,10 @@ import threading
 import time
 from pathlib import Path
 
-from wallet_discovery import activation_ids, card_ids, is_wallet_line, valid_card_id
-from wallet_store import WalletStore
+from .paths import ROOT
+from .wallet_discovery import activation_ids, card_ids, is_wallet_line, valid_card_id
+from .wallet_store import WalletStore
 
-ROOT = Path(__file__).resolve().parent
 SCANNER_STOP_TIMEOUT = 5
 
 
@@ -30,8 +30,8 @@ class WalletService:
     def __init__(self, data_dir: Path | None = None, *, discover_devices=None,
                  helper_finder=None, catalog_reader=None, popen=None,
                  image_preparer=None, legacy_home=None, connect_on_launch=True):
-        from aircard import find_device_helper, get_all_connected_devices
-        from wallet_catalog import build_catalog
+        from .aircard import find_device_helper, get_all_connected_devices
+        from .wallet_catalog import build_catalog
         self._discover_devices = discover_devices or get_all_connected_devices
         self._helper_finder = helper_finder or find_device_helper
         self._read_catalog = catalog_reader or (lambda ids, product: build_catalog(Path.home() / "Library/Passes", ids, product))
@@ -545,7 +545,7 @@ class WalletService:
     def _prepare_image(self, data):
         if self._image_preparer:
             return self._image_preparer(data)
-        from image_processing import prepare_image
+        from .image_processing import prepare_image
         return prepare_image(data)
 
     def _flash_worker(self, udid, targets):
@@ -562,7 +562,7 @@ class WalletService:
                         raise RuntimeError("Artwork changed during preparation. Select it again and retry.")
                     image = Path(directory) / "card.png"
                     image.write_bytes(self._prepare_image(source))
-                    process = self._popen([sys.executable, "-u", str(ROOT / "aircard_backend.py"), "--flash", udid, row["id"], str(image)],
+                    process = self._popen([sys.executable, "-u", "-m", "backend.aircard_backend", "--flash", udid, row["id"], str(image)],
                                           cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                           start_new_session=True, text=True, encoding="utf-8", errors="replace", bufsize=1)
                     success = False

@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from wallet_catalog import build_catalog, decode_archive
+from backend.wallet_catalog import build_catalog, decode_archive
 
 A = 'A' * 27 + '='
 B = 'B' * 27 + '='
