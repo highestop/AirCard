@@ -45,8 +45,9 @@ session (`product`, `version`, `name`, `language`, `bold_text`), and
 too.
 
 Only macOS 27 was tested. If detection fails elsewhere, or if a previously
-working macOS version regresses after this change, report the macOS version,
-iPhone model and iOS version alongside the AirCard commit tested.
+working macOS version regresses after this change, record the macOS version,
+iPhone model and iOS version alongside the AirCard commit tested for local
+troubleshooting.
 
 ## Automated checks
 

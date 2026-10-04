@@ -1,20 +1,18 @@
 # 离线卡面制作工具 / Offline artwork studio
 
-[中文指南](../../docs/guides/README.zh-CN.md) · [English guide](../../docs/guides/README.en.md) · [卡面素材 / Artwork](../../assets/skins/README.md)
-
 ## 中文
 
 将自己的图片裁切并导出为 **1536 × 969 PNG**，再交给 AirCard 预览和应用。工具是单个 [`index.html`](index.html) 文件，内置全部 CSS 和 JavaScript；无需安装依赖、启动服务器或联网。图片只在浏览器的本地 Canvas 中处理，没有上传、遥测或操作历史存储。
 
-### 下载与使用
+### 本地使用
 
-1. 在 GitHub 打开本目录的 [`index.html`](index.html)，点击文件右上角的 **Download raw file / 下载原始文件** 按钮。如果界面只显示 **Raw**，打开 Raw 后将文件保存为 `index.html`；也可以从仓库的 **Code → Download ZIP** 下载并解压，找到 `tools/card-artwork/index.html`。不要保存 GitHub 的文件预览网页。
+1. 在本地仓库找到 [`tools/card-artwork/index.html`](index.html)。
 2. 用支持 Canvas、File API 和下载功能的现代浏览器打开本地 `index.html`。双击文件或将文件拖入浏览器即可，地址栏应为 `file://…/index.html`，不需要本地服务器。
 3. 点击「选择图片」，或将一张 **PNG、JPEG 或 WebP** 拖入预览区域。文件最大 **30 MiB**，最多 **48 MP**，单边最多 **16,384 px**。SVG、HEIC、GIF 和非图片文件会被拒绝；请先转换为支持的格式。
 4. 初始构图按比例填满目标画面，并从中心裁切。拖动预览、调整缩放，或用「水平取景／垂直取景」滑杆定位。所有滑杆均可通过键盘 Tab 聚焦和方向键调整；聚焦预览后也可以使用方向键，按住 Shift 可以扩大移动幅度。某个方向没有可裁切余量时，其滑杆不可用。
 5. 按需选择「保留透明通道」「填充白色背景」或「填充黑色背景」。默认保留原图透明度；棋盘格仅用于预览，**不会导出到图片**。
 6. 点击「下载卡面 PNG」。导出尺寸始终为 **1536 × 969 像素**，不会因页面大小或屏幕像素密度变化。文件名为 `原文件名-aircard-1536x969.png`；文件名过长时会截短，并替换不适合作为文件名的字符。
-7. 将导出的 PNG 导入 AirCard，检查预览，再按指南应用到选中的卡片。浏览器关闭或刷新后，未导出的构图会丢失。
+7. 将导出的 PNG 导入 AirCard，检查预览，再应用到选中的卡片。浏览器关闭或刷新后，未导出的构图会丢失。
 
 右上角可切换中文和英文；语言切换不会重置当前构图。「重置缩放与居中构图」恢复最初的裁切位置和缩放，保留已选背景处理方式。
 
@@ -43,15 +41,15 @@ node --test tools/card-artwork/tests/crop.test.cjs
 
 Crop your own image and export a **1536 × 969 PNG**, then preview and apply it in AirCard. The entire tool is one [`index.html`](index.html) file with embedded CSS and JavaScript. No dependencies, server, or internet connection are required. Images are processed in a local browser canvas, with no uploads, telemetry, or saved editing history.
 
-### Download and use
+### Use locally
 
-1. Open [`index.html`](index.html) in this GitHub directory and click **Download raw file** in the file toolbar. If only **Raw** is available, open it and save the raw file as `index.html`. Alternatively, choose **Code → Download ZIP**, extract it, and find `tools/card-artwork/index.html`. Do not save GitHub's file-preview webpage.
+1. Find [`tools/card-artwork/index.html`](index.html) in your local checkout.
 2. Open the local `index.html` in a modern browser with Canvas, File API, and download support. Double-click it or drag it into the browser. The address should start with `file://` and end in `index.html`; no local server is necessary.
 3. Choose or drop one **PNG, JPEG, or WebP** image into the preview area. The limits are **30 MiB**, **48 MP**, and **16,384 px per side**. SVG, HEIC, GIF, and non-image files are rejected; convert them first.
 4. The initial view scales the image to fill the target and crops it at the center. Drag the preview, adjust zoom, or use the horizontal and vertical crop-position sliders. Tab and arrow keys operate the sliders. Arrow keys also move the crop when the preview is focused; hold Shift for larger steps. A slider is disabled if the entire corresponding dimension is already visible.
 5. Choose whether to keep transparency or fill transparent areas with white or black. Source alpha is preserved by default. The checkerboard is a preview aid and **is never exported**.
 6. Click **Download artwork PNG**. The output is always **1536 × 969 pixels**, independent of the page size or screen pixel density. The filename is `original-name-aircard-1536x969.png`; long names are shortened and unsuitable filename characters are replaced.
-7. Import the PNG into AirCard, check its preview, and follow the guide to apply it to the selected cards. Export before closing or refreshing this page to keep your work.
+7. Import the PNG into AirCard, check its preview, and apply it to the selected cards. Export before closing or refreshing this page to keep your work.
 
 The top-right button switches between Chinese and English without changing the composition. **Reset zoom & center crop** restores the initial scale and position while preserving the selected transparency/background setting.
 

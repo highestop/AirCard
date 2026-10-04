@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from aircard_backend import parse_passthm_archive, KEYPAD_SUBTEXTS
 
 def test_minepass_nightly_extraction():
-    minepass_path = "/Users/mak5er/Downloads/MinePass_Nightly.passthm"
+    minepass_path = "/Users/example/Downloads/MinePass_Nightly.passthm"
     items = parse_passthm_archive(minepass_path, "TelephonyUI-10")
     
     # Verify all digits 0 through 9 are present
@@ -182,15 +182,15 @@ git commit -m "feat(ui): implement interactive Passcode Theme Creator in English
 
 **Files:**
 - Test with real device and files:
-  - `/Users/mak5er/Downloads/MinePass_Nightly.passthm`
-  - `/Users/mak5er/Downloads/AyuGram Desktop/тцк.passthm`
+  - `/Users/example/Downloads/MinePass_Nightly.passthm`
+  - `/Users/example/Downloads/AyuGram Desktop/тцк.passthm`
   - Custom generated theme from AirCard Creator
 
 - [ ] **Step 1: Test flashing `MinePass_Nightly.passthm` via backend**
 
 Run:
 ```bash
-python3 aircard_backend.py flash-passthm 00008120-001A1D0A1EE9A01E "/Users/mak5er/Downloads/MinePass_Nightly.passthm" TelephonyUI-10
+python3 aircard_backend.py flash-passthm 00008120-001A1D0A1EE9A01E "/Users/example/Downloads/MinePass_Nightly.passthm" TelephonyUI-10
 ```
 Expected: All 10 digits flash successfully (no missing 2-9 keys).
 

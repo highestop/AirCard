@@ -1,12 +1,8 @@
 # AirCard 🎴
 
 > **Apple Wallet Card Skinner & Lockscreen Passcode Themer for iOS 18+ (No Jailbreak Required)**  
-> **Tested on iOS 27 release.**
-> Powered by the `airlift` AirTraffic sync exploit.
 
-<p align="left">
-  <a href="https://www.paypal.com/donate/?hosted_button_id=98QRTC2HFRA4Y"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?style=flat-square&logo=paypal" alt="Donate with PayPal" /></a>
-</p>
+This fork is maintained for personal customization.
 
 ---
 
@@ -23,21 +19,16 @@
 
 ---
 
-## Guides and sample artwork
+## Local artwork tool
 
-Wallet setup, detailed troubleshooting, multi-card workflows, theme creation, compatibility reporting, and local artwork preparation:
-
-- [简体中文使用指南](docs/guides/README.zh-CN.md)
-- [English getting-started guide](docs/guides/README.en.md)
-- [Card artwork and source notes](assets/skins/README.md)
-- [Offline card artwork editor](tools/card-artwork/README.md) — download a single HTML file, frame an image locally, and export a 1536 × 969 PNG
+Use the [offline card artwork editor](tools/card-artwork/README.md) to frame an image locally and export a 1536 × 969 PNG.
 
 ---
 
 ## Installation
 
 ### macOS (Universal DMG)
-1. Download **`AirCard.dmg`** from [Releases](https://github.com/mak5er/AirCard/releases).
+1. Build **`AirCard.dmg`** locally using the instructions below.
 2. Open `AirCard.dmg` and drag **`AirCard.app`** into your **Applications** folder.
 3. Fully compatible with both **Apple Silicon** and **Intel (x86)** Macs.
 
@@ -49,9 +40,6 @@ Wallet setup, detailed troubleshooting, multi-card workflows, theme creation, co
 >   ```sh
 >   sudo xattr -cr /Applications/AirCard.app
 >   ```
-
-> [!NOTE]
-> **Windows users:** an unofficial Windows port is available at [**AirCard-Windows**](https://github.com/Lumid-Off/AirCard-Windows).
 
 ---
 
@@ -97,11 +85,9 @@ double-click the side button, authenticate, and tap or switch cards. If the log
 reader stops, reconnect and unlock the iPhone, then start another scan. Values
 that iOS replaces with `<private>` cannot be recovered by the scanner.
 
-If your device previously connected but scanning found zero cards, please try
-this build and report whether it helps. Include your iPhone model, iOS version,
-macOS version, and the AirCard version or commit tested. Avoid posting full
-device logs or card identifiers. See [scanner validation](docs/wallet-card-detection.md)
-for the verified environment and remaining coverage.
+If your device previously connected but scanning found zero cards, check
+[scanner validation](docs/wallet-card-detection.md) for the verified environment
+and remaining coverage. Avoid sharing full device logs or card identifiers.
 
 ---
 
@@ -118,45 +104,12 @@ for the verified environment and remaining coverage.
 
 ---
 
-## Community Resources
-
-- [AirCards](https://aircards.org/) — A free, independently maintained
-  card artwork catalog and sharing community. Browse, filter, and
-  preview designs, download PNG artwork to use with AirCard, or
-  publish your own creations for others to discover and use.
-
-These resources are maintained by the community and are not affiliated
-with the AirCard project.
-
----
-
-## Building from Source
+## Build locally
 
 ```sh
-git clone https://github.com/mak5er/AirCard.git
+git clone https://github.com/highestop/AirCard.git
 cd AirCard
 chmod +x build.sh
 ./build.sh
 ```
 This builds universal binaries (`arm64` + `x86_64`), bundles dependencies into `build/AirCard.app`, and outputs `build/AirCard.dmg`.
-
----
-
-## Contributors
-- **[@mak5er](https://github.com/mak5er)** (Developer) — [GitHub](https://github.com/mak5er) · [Twitter / X](https://x.com/mak5er)
-- **[@Lumid-Off](https://github.com/Lumid-Off)** (Contributor & Developer) — [GitHub](https://github.com/Lumid-Off) · [Twitter / X](https://x.com/LumidOff)
-- **[AirLift](https://github.com/0xjohnnydev/airlift)** by **[0xjohnny (@0xjohnnydev)](https://github.com/0xjohnnydev)**: Original AirTraffic/ATAirlock sandbox escape and proof of concept underlying `AirliftFFI`.
-
-## Credits
-- Core exploit based on `airlift` (AirTraffic sync escape).
-
----
-
-## Support
-
-If you find AirCard useful, you can support future development:
-
-- **PayPal**: [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=98QRTC2HFRA4Y)
-- **TON**: `UQBm9KPhtMw-XVVjirUoa09wzrlyWsbeZhKfefl1Uw-qNZ-r`
-- **USDT (TRC20)**: `TDkDMCyjYxgvkWUnQiF5Erk2RyPQMT6G1n`
-- **USDT / BNB (BEP20)**: `0x0954dc491c502849d04956ef74634aa5931a08e8`
