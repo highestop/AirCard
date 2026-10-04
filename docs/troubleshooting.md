@@ -1,36 +1,71 @@
-# 连接与扫描排查
+# Connection and scanning troubleshooting
 
-## 找不到 iPhone
+## iPhone not found
 
-1. 用 USB 连接，解锁 iPhone，并确认已经信任这台 Mac。
-2. 点击「刷新设备列表」或「识别诊断」中的「重新连接」。多台设备连接时，明确选择目标 iPhone。
-3. 检查原生工具是否已编译：运行 `make all`。需要单独检查枚举时，可运行 `build/device_helper list`；输出包含设备标识，请保留在本机。
+1. Connect the iPhone over USB, unlock it, and confirm that it trusts this Mac.
+2. Refresh the device list or use the reconnect control in the identification
+   diagnostics section. If multiple devices are connected, explicitly select
+   the target iPhone.
+3. Run `make all` to ensure the native tools are built. To check device
+   enumeration separately, run `build/device_helper list`. Its output contains
+   device identifiers; keep it on your own machine.
 
-原生发现使用 `AMDeviceNotificationSubscribeWithOptions` 的 USBMux 传输。曾在 macOS 27 上验证：同时启用 `NotificationOptionEnableRemoteXPC` 会让已配对的 USB iPhone 消失；因此当前实现不启用该选项。`native/__tests__/test_device_discovery.py` 和对应原生测试防止重新引入这个问题。
+Native device discovery uses the USBMux transport through
+`AMDeviceNotificationSubscribeWithOptions`. Testing on macOS 27 showed that
+also enabling `NotificationOptionEnableRemoteXPC` caused a paired USB iPhone to
+disappear from discovery, so the current implementation leaves that option
+disabled. `native/__tests__/test_device_discovery.py` and its native tests guard
+against reintroducing this issue.
 
-设备选择不会在目标失联时自动切换到另一部 iPhone。重新连接后，仍需在页面明确选择当前设备。
+Device selection does not automatically switch to another iPhone when the
+target disconnects. After reconnecting, explicitly select the current device
+in the interface.
 
-## 已连接但扫描无卡片
+## Connected, but scanning finds no cards
 
-1. 点击「扫描卡片」，展开「操作日志」。
-2. 确认出现 `Connected to the unified device log stream`。
-3. 在 iPhone 上打开 Wallet，逐张打开需要的卡片。付款卡也可通过双击侧边键、认证后切换；会员卡可能需要在 Wallet 内直接打开。
-4. 若扫描器退出，重新连接、解锁并再次扫描。若激活了付款卡但无法映射，可点击「读取缓存」后重试。
+1. Start a card scan and expand the activity log.
+2. Confirm that `Connected to the unified device log stream` appears.
+3. Open Wallet on the iPhone and open each card you need. For payment cards,
+   you can also double-click the side button, authenticate, and switch cards.
+   Membership cards may need to be opened directly inside Wallet.
+4. If the scanner exits, reconnect, unlock, and scan again. If a payment card
+   activates but cannot be mapped, reread the cache and retry.
 
-扫描使用 `com.apple.os_trace_relay`，读取包含 Info/Debug 事件的统一日志。旧 `com.apple.syslog_relay` 在已验证的 iOS 18.6.2 环境中会遗漏含卡片路径的资源查询消息。原生测试覆盖分片、合并帧、字节序、畸形长度、截断记录和多行路径。
+Scanning uses `com.apple.os_trace_relay` to read unified logs, including
+Info/Debug events. In the tested iOS 18.6.2 environment, the older
+`com.apple.syslog_relay` omitted resource-query messages containing card paths.
+Native tests cover fragmented and coalesced frames, byte order, malformed
+lengths, truncated records, and multiline paths.
 
-## 有些卡始终不显示
+## Some cards never appear
 
-- **只有付款激活 ID，没有卡片文件 ID**：二者不是同一个标识。需要 Mac 的 Wallet 缓存提供精确映射；缺少映射时，不能按名称、卡号尾号或卡片位置猜测。
-- **日志字段为 `<private>`**：隐藏内容无法从当前日志恢复。
-- **仅出现在 `passIDs[global]` / Express Mode 配置中**：这类记录可能反映配置而不是当前卡片状态，当前解析器不把它当作本次确认。
-- **Mac 缓存过期或不完整**：「读取缓存」只读取现有文件，不会强制 iCloud 刷新。缓存数量不是手机卡片总数。
-- **重启后保存记录隐藏**：属于正常行为，必须通过当前设备的新一轮扫描确认。
+- **A payment activation ID is available, but no card file ID:** These are
+  different identifiers. The Mac's Wallet cache must provide an exact mapping.
+  Without one, AirCard cannot guess from a name, card-number suffix, or card
+  position.
+- **A log field contains `<private>`:** The hidden content cannot be recovered
+  from the current log.
+- **An ID only appears in `passIDs[global]` / Express Mode configuration:** Such
+  records may describe configuration rather than current card state. The
+  parser does not treat them as confirmation in the current scan.
+- **The Mac cache is stale or incomplete:** Rereading the cache only reads
+  existing files; it does not force an iCloud refresh. The cache count is not
+  the phone's total card count.
+- **Saved records are hidden after restarting:** This is expected. A new scan
+  on the current device must confirm them.
 
-更多身份核对和持久化规则见 [卡片识别](wallet-discovery.md)。
+For more about identity verification and persistence, see
+[Card identification](wallet-discovery.md).
 
-## 验证范围
+## Validation scope
 
-保留的设备验证记录包括：iPhone 15 Pro / iOS 18.6.2 的卡片路径扫描、iPhone 16 Pro / iOS 27.0 的设备发现，以及 Web 迁移后 iPhone 14 Pro / iOS 27.0.1 的设备发现和日志扫描启动/停止。这些只证明各次连接或扫描结果，不代表所有系统版本或实际卡面写入都已验收。
+Retained device validation records cover card-path scanning on an iPhone 15 Pro
+with iOS 18.6.2, device discovery on an iPhone 16 Pro with iOS 27.0, and device
+discovery plus log-scan startup/shutdown on an iPhone 14 Pro with iOS 27.0.1 after
+the migration to the web interface. These records establish only the results
+of those connection or scanning sessions. They do not establish that every OS
+version or actual artwork writing has been validated.
 
-排查时记录系统版本、设备型号、仓库提交和错误摘要即可；不要将完整设备日志、卡片 ID、会员号或二维码提交进仓库。
+For troubleshooting, record the OS version, device model, repository commit,
+and a summary of the error. Do not commit full device logs, card IDs, membership
+numbers, or QR codes to the repository.

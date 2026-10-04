@@ -36,18 +36,20 @@ phone's actual Wallet display order.
 
 ## Checking a missing card
 
-1. Connect, unlock and trust the iPhone, then choose **扫描卡片**.
+1. Connect and unlock the iPhone, confirm that it trusts the Mac, then start a
+   card scan.
 2. Open each missing card in the iPhone Wallet app. Payment cards can also be
    opened through the side-button Apple Pay interface after authentication.
    Membership cards may need opening directly inside Wallet.
-3. Expand **识别诊断** to see named cache entries that still need
-   scan confirmation. Short ID suffixes distinguish cards with the same name.
-4. If scanning stops unexpectedly, inspect **操作日志**, use **重新连接**, then
+3. Expand the identification diagnostics section to see named cache entries
+   that still need scan confirmation. Short ID suffixes distinguish cards with
+   the same name.
+4. If scanning stops unexpectedly, inspect the activity log, reconnect, then
    start scanning again. The app distinguishes connection failure, scanner
    startup failure, unexpected exit and a scan with no detected IDs.
-5. **读取缓存** rereads local metadata. It does not force an iCloud refresh.
-   Missing or unreadable metadata leaves scanning available and displays a
-   diagnostic instead of declaring that the phone has zero cards.
+5. Rereading the cache reloads local metadata. It does not force an iCloud
+   refresh. Missing or unreadable metadata leaves scanning available and
+   displays a diagnostic instead of declaring that the phone has zero cards.
 
 ## Persistence and migration
 
