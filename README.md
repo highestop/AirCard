@@ -88,9 +88,17 @@ Python 模块统一位于 `backend/`，通过 `python3 -m backend` 启动；`bac
 
 ```sh
 make all
-python3 -m unittest discover -s tests -v
-node --check web/app.js
-node --test web/tests/*.test.cjs
+make test
 ```
+
+测试按被测模块归类，目录统一命名为 `__tests__`：
+
+- `backend/__tests__/`：Python 业务逻辑、HTTP 接口和启动入口。
+- `native/__tests__/`：原生设备发现和日志协议测试，包含 Python 编译运行器。
+- `web/__tests__/`：卡面编辑器及页面消息交互。
+- `__tests__/integration/`：原生日志到 Python 识别，以及 HTTP、图片处理、模拟写入和持久化的集成流程。
+- `__tests__/fixtures.py`：各组共用的模拟设备、进程和图片数据。
+
+可以用 `make test-backend`、`make test-native`、`make test-web` 或 `make test-integration` 单独运行一组。
 
 Node.js 仅用于前端检查，不是运行依赖。自动化测试覆盖本地服务和模拟设备链路；真实 iPhone 上的最终显示效果需要实际写入验收。

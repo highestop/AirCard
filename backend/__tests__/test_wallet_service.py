@@ -1,83 +1,16 @@
 import hashlib
-import io
 import json
 import plistlib
-import queue
-import subprocess
 import sys
 import tempfile
 import threading
-import time
 import unittest
 from unittest.mock import patch
 from pathlib import Path
 
 from backend.wallet_service import WalletService, empty_catalog
 from backend.wallet_store import WalletStore
-
-A = "A" * 27 + "="
-B = "B" * 27 + "="
-C = "C" * 27 + "="
-FIRST = {"udid": "first-phone", "name": "First", "product": "iPhone16,1", "version": "27", "connected": True}
-SECOND = {"udid": "second-phone", "name": "Second", "product": "iPhone16,1", "version": "27", "connected": True}
-
-
-def wait_for(predicate, timeout=3):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if predicate():
-            return
-        time.sleep(0.005)
-    raise AssertionError("Timed out waiting for asynchronous controller state")
-
-
-class LiveStream:
-    def __init__(self):
-        self.lines = queue.Queue()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        item = self.lines.get(timeout=5)
-        if item is None:
-            raise StopIteration
-        return item
-
-    def close(self):
-        pass
-
-
-class Process:
-    def __init__(self, lines=None, returncode=0):
-        self.stdout = LiveStream() if lines is None else io.StringIO(lines)
-        self.returncode = None if lines is None else returncode
-        self.finished = threading.Event()
-        if lines is not None:
-            self.finished.set()
-        self.terminated = False
-
-    def feed(self, text):
-        self.stdout.lines.put(text)
-
-    def end(self, status=0):
-        self.returncode = status
-        self.stdout.lines.put(None)
-        self.finished.set()
-
-    def poll(self):
-        return self.returncode
-
-    def terminate(self):
-        self.terminated = True
-        self.end(-15)
-
-    kill = terminate
-
-    def wait(self, timeout=None):
-        if not self.finished.wait(timeout):
-            raise subprocess.TimeoutExpired("fake", timeout)
-        return self.returncode
+from __tests__.fixtures import A, B, C, FIRST, SECOND, Process, wait_for
 
 
 class WalletStoreTests(unittest.TestCase):
@@ -155,7 +88,7 @@ class WalletServiceTests(unittest.TestCase):
                 process = Process()
             else:
                 self.assertEqual(command[:5], [sys.executable, "-u", "-m", "backend.aircard_backend", "--flash"])
-                self.assertEqual(Path(kwargs["cwd"]), Path(__file__).resolve().parents[1])
+                self.assertEqual(Path(kwargs["cwd"]), Path(__file__).resolve().parents[2])
                 self.assertTrue(kwargs.get("start_new_session"), "Ctrl+C must not interrupt native write cleanup")
                 process = self.flash_results.pop(0) if self.flash_results else Process(json.dumps({"type": "success", "step": 8, "total": 8, "message": "Updated"}) + "\n")
             self.processes.append(process)

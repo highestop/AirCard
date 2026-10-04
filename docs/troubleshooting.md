@@ -6,7 +6,7 @@
 2. 点击「刷新设备列表」或「识别诊断」中的「重新连接」。多台设备连接时，明确选择目标 iPhone。
 3. 检查原生工具是否已编译：运行 `make all`。需要单独检查枚举时，可运行 `build/device_helper list`；输出包含设备标识，请保留在本机。
 
-原生发现使用 `AMDeviceNotificationSubscribeWithOptions` 的 USBMux 传输。曾在 macOS 27 上验证：同时启用 `NotificationOptionEnableRemoteXPC` 会让已配对的 USB iPhone 消失；因此当前实现不启用该选项。`tests/test_device_discovery.py` 和对应原生测试防止重新引入这个问题。
+原生发现使用 `AMDeviceNotificationSubscribeWithOptions` 的 USBMux 传输。曾在 macOS 27 上验证：同时启用 `NotificationOptionEnableRemoteXPC` 会让已配对的 USB iPhone 消失；因此当前实现不启用该选项。`native/__tests__/test_device_discovery.py` 和对应原生测试防止重新引入这个问题。
 
 设备选择不会在目标失联时自动切换到另一部 iPhone。重新连接后，仍需在页面明确选择当前设备。
 

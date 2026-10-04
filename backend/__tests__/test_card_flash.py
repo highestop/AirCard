@@ -28,7 +28,7 @@ class CardFlashTests(unittest.TestCase):
                    "lock = _device_write_lock(sys.argv[1]); lock.__enter__(); "
                    "print('locked', flush=True); sys.stdin.readline(); lock.__exit__(None, None, None)",
                    DEVICE_ID]
-        process = subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
+        process = subprocess.Popen(command, cwd=Path(__file__).resolve().parents[2],
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    text=True)
         try:

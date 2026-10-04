@@ -14,18 +14,12 @@ class CardScannerTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.executable = Path(cls.temporary.name) / "test_os_trace"
-        source = Path(__file__).with_name("test_os_trace.m")
+        source = Path(__file__).resolve().parents[2] / "native" / "__tests__" / "test_os_trace.m"
         subprocess.run(
             ["xcrun", "clang", "-fobjc-arc", "-Wall", "-Wextra", "-Werror",
              "-framework", "Foundation", str(source), "-o", str(cls.executable)],
             check=True, capture_output=True, text=True,
         )
-
-    def test_activity_stream_protocol(self):
-        result = subprocess.run(
-            [str(self.executable)], check=True, capture_output=True, text=True,
-        )
-        self.assertIn("malformed records passed", result.stdout)
 
     def test_ios18_resource_path_reaches_existing_card_patterns(self):
         result = subprocess.run(
