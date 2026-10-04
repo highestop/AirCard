@@ -43,12 +43,12 @@ python3 aircard.py --port 8766 --no-browser
 4. 点击「停止扫描」，检查选中卡片和预览，再点击写入按钮。
 5. 写入完成后，在 iPhone 中强制退出并重新打开 Wallet 查看结果。
 
-图片在 Mac 上转换为 **1536 × 969 PNG**，按比例填满并居中裁切。支持系统图像工具可解码的常见格式，包括 PNG、JPEG、HEIC；单文件最多 30 MiB、48 MP、单边 16,384 像素。也可使用页面中的[离线卡面编辑器](tools/card-artwork/README.md)先调整构图并导出 PNG。
+图片在 Mac 上转换为 **1536 × 969 PNG**，按比例填满并居中裁切。支持系统图像工具可解码的常见格式，包括 PNG、JPEG、HEIC；单文件最多 30 MiB、48 MP、单边 16,384 像素。也可使用页面中的[卡面编辑器](docs/artwork.md)调整构图，再直接应用到选中的卡片；仍可下载 PNG。
 
 ### 保留的交互
 
 - 设备选择、刷新、重连；扫描开始、停止与诊断。
-- 卡面预览、选择/拖放图片、批量分配、全选/取消选择、复制 ID。
+- 卡面预览、选择/拖放图片、批量分配、内置裁切编辑器、全选/取消选择、复制 ID。
 - 清除图片、移除本地记录、清空本地列表；这些操作不会删除手机中的卡片，也不会恢复原卡面。
 - 手动保存 ID；未经本次扫描确认的记录保持隐藏，不能写入。
 - 默认只写入选中且图片发生变化的卡片；全部未变化时可重新写入全部选中卡片。
@@ -61,7 +61,7 @@ python3 aircard.py --port 8766 --no-browser
 
 Mac 缓存数量不是手机卡片总数，页面顺序也不是 Wallet 显示顺序。「读取缓存」只重读 Mac 上现有元数据，不会强制 iCloud 同步。扫描无结果时，检查日志是否出现 `Connected to the unified device log stream`，然后重新连接、解锁并扫描。系统日志中的 `<private>` 无法恢复。
 
-详见[卡片识别和诊断](docs/wallet-discovery.md)、[设备连接](docs/device-detection.md)和[扫描验证](docs/wallet-card-detection.md)。
+详见[卡片识别和诊断](docs/wallet-discovery.md)、[连接与扫描排查](docs/troubleshooting.md)。
 
 ## 本地数据
 
@@ -88,7 +88,7 @@ Mac 缓存数量不是手机卡片总数，页面顺序也不是 Wallet 显示�
 make all
 python3 -m unittest discover -s tests -v
 node --check web/app.js
-node --test tools/card-artwork/tests/crop.test.cjs
+node --test web/tests/*.test.cjs
 ```
 
 Node.js 仅用于前端检查，不是运行依赖。自动化测试覆盖本地服务和模拟设备链路；真实 iPhone 上的最终显示效果需要实际写入验收。

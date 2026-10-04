@@ -20,7 +20,7 @@ MAX_JSON_BYTES = 64 * 1024
 WEB_CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self'; "
     "img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; "
-    "base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    "base-uri 'none'; frame-src 'self'; frame-ancestors 'none'; form-action 'self'"
 )
 
 
@@ -131,8 +131,9 @@ class AirCardHandler(BaseHTTPRequestHandler):
                     "/": ROOT / "web/index.html",
                     "/index.html": ROOT / "web/index.html",
                     "/app.js": ROOT / "web/app.js",
+                    "/artwork-bridge.js": ROOT / "web/artwork-bridge.js",
                     "/style.css": ROOT / "web/style.css",
-                    "/artwork/": ROOT / "tools/card-artwork/index.html",
+                    "/artwork/": ROOT / "web/artwork.html",
                 }
                 source = files.get(path)
                 if source is None or not source.is_file():
@@ -142,7 +143,8 @@ class AirCardHandler(BaseHTTPRequestHandler):
                 csp = WEB_CSP
                 if path == "/artwork/":
                     csp = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
-                           "img-src blob: data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+                           "img-src blob: data:; connect-src 'none'; object-src 'none'; "
+                           "base-uri 'none'; frame-ancestors 'self'; form-action 'none'")
                 self._send(200, source.read_bytes(), content_type + "; charset=utf-8", csp)
         except (ValueError, KeyError, TypeError) as error:
             self._error(400, str(error))

@@ -109,11 +109,17 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/api/artwork?udid=x&card_id=y", token=False)[0], 403)
 
     def test_static_ui_and_offline_editor_are_served(self):
-        for path in ("/", "/app.js", "/style.css", "/artwork/"):
+        for path in ("/", "/app.js", "/artwork-bridge.js", "/style.css", "/artwork/"):
             status, headers, data = self.request("GET", path, token=False)
             self.assertEqual(status, 200, path)
             self.assertTrue(data)
-            self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
+            csp = headers["Content-Security-Policy"]
+            if path == "/artwork/":
+                self.assertIn("frame-ancestors 'self'", csp)
+                self.assertIn("connect-src 'none'", csp)
+            else:
+                self.assertIn("frame-ancestors 'none'", csp)
+                self.assertIn("frame-src 'self'", csp)
 
     def test_external_link_can_open_ui_but_cannot_get_session(self):
         headers = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}
