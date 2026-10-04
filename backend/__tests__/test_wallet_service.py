@@ -158,7 +158,8 @@ class WalletServiceTests(unittest.TestCase):
         self.service = WalletService(Path(self.temp.name) / "data", discover_devices=lambda: self.devices,
                                      helper_finder=lambda: "/fake/device_helper", catalog_reader=lambda ids, product: self.catalog,
                                      popen=popen, image_preparer=lambda data: b"normalized:" + data,
-                                     legacy_home=Path(self.temp.name), connect_on_launch=False)
+                                     legacy_home=Path(self.temp.name), connect_on_launch=False,
+                                     preview_finder=lambda card_id: None)
         self.service.dispatch("devices.refresh", {"udid": "first-phone"})
         wait_for(lambda: not self.service.snapshot()["checking"])
         wait_for(lambda: not self.service.snapshot()["reading_cache"])
@@ -218,6 +219,85 @@ class WalletServiceTests(unittest.TestCase):
         self.stop()
         self.assertEqual(self.service.artwork_path("first-phone", A).read_bytes(), b"image")
         self.assertNotIn("imagePath", json.dumps(self.service.snapshot()))
+
+    def test_cached_preview_requires_current_card_and_never_becomes_replacement(self):
+        cached = Path(self.temp.name) / "cached.png"
+        cached.write_bytes(b"cached reference")
+        lookups = []
+        def find(card_id):
+            lookups.append(card_id)
+            return cached
+        self.service._find_preview = find
+        with self.assertRaises(ValueError):
+            self.service.preview_path("first-phone", A)
+        self.assertEqual(lookups, [])
+        self.scan(A)
+        self.stop()
+        card = self.service.snapshot()["cards"][0]
+        self.assertEqual(card["preview_source"], "mac_cache")
+        self.assertEqual(card["preview_revision"], hashlib.sha256(cached.read_bytes()).hexdigest())
+        self.assertFalse(card["has_image"])
+        self.assertFalse(card["is_flashed"])
+        self.assertIsNone(self.service.artwork_path("first-phone", A))
+        self.assertEqual(self.service.preview_path("first-phone", A), cached)
+        with self.assertRaisesRegex(ValueError, "Assign artwork"):
+            self.service.dispatch("flash.start", {"udid": "first-phone"})
+        with self.assertRaises(ValueError):
+            self.service.preview_path("second-phone", A)
+        self.assertNotIn(str(cached), json.dumps(self.service.snapshot()))
+        self.assertIsNone(self.service._store.records("first-phone")[0]["imagePath"])
+
+    def test_slow_preview_lookup_does_not_block_state_or_survive_device_switch(self):
+        cached = Path(self.temp.name) / "cached.png"
+        cached.write_bytes(b"old device preview")
+        self.scan(A)
+        self.stop()
+        entered = threading.Event()
+        release = threading.Event()
+        def find(card_id):
+            entered.set()
+            release.wait(3)
+            return cached
+        self.service._find_preview = find
+        self.service.dispatch("catalog.refresh", {"udid": "first-phone"})
+        self.assertTrue(entered.wait(2))
+        done = threading.Event()
+        worker = threading.Thread(target=lambda: (self.service.snapshot(), done.set()))
+        worker.start()
+        try:
+            self.assertTrue(done.wait(0.5), "Preview decode must not hold the controller lock")
+            self.service.dispatch("devices.select", {"udid": "second-phone"})
+            wait_for(lambda: not self.service.snapshot()["checking"])
+        finally:
+            release.set()
+            worker.join(2)
+        wait_for(lambda: not self.service.snapshot()["reading_cache"])
+        self.assertEqual(self.service.snapshot()["cards"], [])
+        self.assertEqual(self.service._previews, {})
+
+    def test_replacement_preview_takes_priority_and_missing_file_is_not_masked(self):
+        cached = Path(self.temp.name) / "cached.png"
+        cached.write_bytes(b"cached reference")
+        self.service._find_preview = lambda card_id: cached
+        self.scan(A)
+        self.stop()
+        self.service.assign_artwork("first-phone", [A], b"chosen artwork")
+        row = self.service.snapshot()["cards"][0]
+        self.assertEqual(row["preview_source"], "local")
+        self.assertEqual(row["preview_revision"], row["image_revision"])
+        self.assertEqual(self.service.preview_path("first-phone", A).read_bytes(), b"chosen artwork")
+        self.service.artwork_path("first-phone", A).unlink()
+        row = self.service.snapshot()["cards"][0]
+        self.assertTrue(row["image_missing"])
+        self.assertIsNone(row["preview_source"])
+        self.service.dispatch("cards.clear_image", {"udid": "first-phone", "id": A})
+        self.assertEqual(self.service.snapshot()["cards"][0]["preview_source"], "mac_cache")
+        self.assertEqual(cached.read_bytes(), b"cached reference")
+        self.service.dispatch("devices.select", {"udid": "second-phone"})
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        self.assertEqual(self.service.snapshot()["cards"], [])
+        with self.assertRaises(ValueError):
+            self.service.preview_path("second-phone", A)
 
     def test_cache_requires_fresh_evidence_then_preloads_matching_payment_cards(self):
         self.catalog = {**empty_catalog(), "paymentStatus": "matched", "payments": [{"id": A, "name": "A", "source": "payment"}, {"id": B, "name": "B", "source": "payment"}], "memberships": [{"id": C, "name": "C", "source": "membership"}]}

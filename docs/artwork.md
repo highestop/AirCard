@@ -25,8 +25,9 @@ Applying an image only updates the local artwork configuration; it does not
 automatically write to the phone. If the device or target cards change, reopen
 the editor to confirm the targets.
 
-Existing artwork loads automatically. When multiple cards are selected, the
-first card with an image provides the starting artwork, and applying the result
+Previously chosen local artwork loads automatically. Mac cache previews are
+reference images and are not loaded into the editor. When multiple cards are
+selected, the first card with a chosen image provides the starting artwork, and applying the result
 sets the same image on every target card. Saved artwork is an already-cropped
 PNG, so the editor cannot recover cropped-out parts of the original. Select the
 original image again if you need to reframe it.
