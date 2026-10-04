@@ -13,7 +13,7 @@ import aircard_backend
 import apply_card_skin
 
 
-DEVICE_ID = "00008150-000A04911A87401C"
+DEVICE_ID = "FIXTURE-FLASH-PHONE"
 CARD_ID = "AbCdEfGhIjKlMnOpQrStUvWxYz0="
 
 PNG_1X1 = base64.b64decode(

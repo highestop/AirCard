@@ -436,10 +436,6 @@ static NSData *AFCReadFileWithLimit(AFCConnectionRef afc,
     return data;
 }
 
-static NSData *AFCReadFile(AFCConnectionRef afc, NSString *path) {
-    return AFCReadFileWithLimit(afc, path, 16 * 1024 * 1024);
-}
-
 static BOOL AFCWriteFile(AFCConnectionRef afc, NSString *path, NSData *data) {
     AFCFileRef file = NULL;
     int status = AFCFileRefOpen(afc, path.fileSystemRepresentation, 3, &file);
@@ -459,29 +455,6 @@ static BOOL RemoveIfPresent(AFCConnectionRef afc, NSString *path) {
     if (!AFCExists(afc, path)) return YES;
     return AFCRemovePath(afc, path.fileSystemRepresentation) == 0 &&
         !AFCExists(afc, path);
-}
-
-static BOOL AllTrackedBooksFilesAbsent(AFCConnectionRef afc) {
-    for (NSUInteger index = 0;
-         index < sizeof(TrackedBooksFiles) / sizeof(char *);
-         index++) {
-        NSString *path =
-            [NSString stringWithUTF8String:TrackedBooksFiles[index]];
-        if (AFCExists(afc, path)) return NO;
-    }
-    return YES;
-}
-
-static NSArray<NSString *> *PresentTrackedBooksPaths(AFCConnectionRef afc) {
-    NSMutableArray<NSString *> *paths = NSMutableArray.array;
-    for (NSUInteger index = 0;
-         index < sizeof(TrackedBooksFiles) / sizeof(char *);
-         index++) {
-        NSString *path =
-            [NSString stringWithUTF8String:TrackedBooksFiles[index]];
-        if (AFCExists(afc, path)) [paths addObject:path];
-    }
-    return paths;
 }
 
 static NSString *SnapshotFileName(NSUInteger index) {
@@ -686,15 +659,6 @@ static NSDictionary *RestoreBooksState(AFCConnectionRef afc, NSString *root) {
               @"preimageVerified": @(verified) };
 }
 
-static BOOL IsSafeRelativePath(NSString *path) {
-    if (!path.length || [path hasPrefix:@"/"] || [path hasSuffix:@"/"])
-        return NO;
-    for (NSString *component in [path componentsSeparatedByString:@"/"])
-        if (!component.length || [component isEqual:@"."] ||
-            [component isEqual:@".."]) return NO;
-    return YES;
-}
-
 static BOOL IsLowercaseHex(NSString *value, NSUInteger length) {
     if (value.length != length) return NO;
     for (NSUInteger index = 0; index < value.length; index++) {
@@ -721,17 +685,6 @@ static BOOL GeneratedNamesMatch(NSString *source,
             isEqualToString:token] &&
         [GeneratedToken(recovered, AIRLIFT_RECOVERED_PREFIX)
             isEqualToString:token];
-}
-
-static BOOL IsCanaryLeaf(NSString *leaf) {
-    if (![leaf hasPrefix:AIRLIFT_CANARY_PREFIX] ||
-        ![leaf hasSuffix:@".bin"] ||
-        leaf.length < AIRLIFT_CANARY_PREFIX.length + @".bin".length ||
-        [leaf rangeOfString:@"/"].location != NSNotFound) return NO;
-    NSRange tokenRange = NSMakeRange(
-        AIRLIFT_CANARY_PREFIX.length,
-        leaf.length - AIRLIFT_CANARY_PREFIX.length - @".bin".length);
-    return IsLowercaseHex([leaf substringWithRange:tokenRange], 32);
 }
 
 static BOOL RemoveGeneratedTree(AFCConnectionRef afc,
@@ -910,76 +863,6 @@ static NSDictionary *Stage(DeviceSession *session, NSArray<NSString *> *args) {
               @"booksWritten": @(booksWritten) };
 }
 
-static NSDictionary *Finish(DeviceSession *session, NSArray<NSString *> *args) {
-    NSString *source = args[0];
-    NSString *linkDestination = args[1];
-    NSString *recovered = args[2];
-    NSData *expected = [NSData dataWithContentsOfFile:args[3]];
-    NSString *targetTail = args[4];
-    NSString *targetLeaf = args[5];
-    NSString *waitArgument = args[6];
-    NSString *snapshotRoot = args[7];
-    NSDictionary *snapshot = LoadBooksSnapshot(snapshotRoot);
-    BOOL safeArguments =
-        GeneratedNamesMatch(source, linkDestination, recovered) &&
-        IsSafeRelativePath(targetTail) && IsCanaryLeaf(targetLeaf) &&
-        expected.length > 0 && expected.length < 4096 &&
-        snapshot != nil &&
-        ([waitArgument isEqual:@"0"] || [waitArgument isEqual:@"1"]);
-    if (!safeArguments)
-        return @{ @"ok": @NO, @"safeArguments": @NO };
-
-    NSData *observed = nil;
-    NSUInteger readbackAttempts = 0;
-    NSUInteger maximumAttempts = [waitArgument isEqual:@"1"] ? 60 : 1;
-    for (NSUInteger index = 0; index < maximumAttempts; index++) {
-        readbackAttempts++;
-        observed = AFCReadFile(session->afc, recovered);
-        if ([observed isEqualToData:expected]) break;
-        if (index + 1 < maximumAttempts) usleep(250000);
-    }
-    BOOL recoveredPresent = observed != nil;
-    BOOL bytesMatch = recoveredPresent && [observed isEqualToData:expected];
-    NSMutableArray<NSString *> *failures = NSMutableArray.array;
-
-    NSString *targetThroughLink =
-        [linkDestination stringByAppendingPathComponent:targetLeaf];
-    if (!RemoveIfPresent(session->afc, targetThroughLink))
-        [failures addObject:@"target canary"];
-    BOOL targetAbsent = !AFCExists(session->afc, targetThroughLink);
-    if (!RemoveIfPresent(session->afc, linkDestination))
-        [failures addObject:@"relocated link"];
-    if (!RemoveIfPresent(session->afc, recovered))
-        [failures addObject:@"recovered file"];
-    if (!RemoveGeneratedTree(session->afc, source, 0))
-        [failures addObject:@"StreamingZip tree"];
-    sleep(2);
-    NSDictionary *booksRestore = RestoreBooksState(session->afc, snapshotRoot);
-    BOOL booksRestored = [booksRestore[@"ok"] boolValue];
-    if (!booksRestored) [failures addObject:@"Books preimage"];
-
-    BOOL sourceAbsent = !AFCExists(session->afc, source);
-    BOOL linkAbsent = !AFCExists(session->afc, linkDestination);
-    BOOL recoveredAbsent = !AFCExists(session->afc, recovered);
-    BOOL cleanupComplete = failures.count == 0 && targetAbsent &&
-        sourceAbsent && linkAbsent && recoveredAbsent && booksRestored;
-    return @{ @"ok": @(bytesMatch && cleanupComplete),
-              @"safeArguments": @YES,
-              @"recoveredPresent": @(recoveredPresent),
-              @"recoveredBytesMatch": @(bytesMatch),
-              @"readbackAttempts": @(readbackAttempts),
-              @"observedLength": @(observed.length),
-              @"cleanupComplete": @(cleanupComplete),
-              @"cleanupFailureCount": @(failures.count),
-              @"failures": failures,
-              @"targetAbsent": @(targetAbsent),
-              @"sourceAbsent": @(sourceAbsent),
-              @"linkAbsent": @(linkAbsent),
-              @"recoveredAbsent": @(recoveredAbsent),
-              @"booksPreimageRestored": @(booksRestored),
-              @"booksRestore": booksRestore };
-}
-
 static NSDictionary *FinishWrite(DeviceSession *session, NSArray<NSString *> *args) {
     NSString *source = args[0];
     NSString *linkDestination = args[1];
@@ -1083,22 +966,8 @@ int main(int argc, const char *argv[]) {
         BOOL targetGatePassed = TargetGate(summary, &targetTested);
         NSDictionary *operation = nil;
         if (session.afcStatus == 0 && session.afc && targetGatePassed) {
-            if ([command isEqual:@"probe"] && argc == 3) {
-                NSArray<NSString *> *presentPaths =
-                    PresentTrackedBooksPaths(session.afc);
-                operation = @{ @"ok": @YES,
-                    @"booksStagingAbsent":
-                        @(AllTrackedBooksFilesAbsent(session.afc)),
-                    @"presentBooksPaths": presentPaths,
-                    @"fixedSyncInputPresent":
-                        @([presentPaths containsObject:@"Books/Sync/Books.plist"]),
-                    @"booksSyncPlistPresent":
-                        @(AFCExists(session.afc, @"Books/Sync/Books.plist")) };
-            } else if ([command isEqual:@"snapshot-books"] && argc == 4) {
+            if ([command isEqual:@"snapshot-books"] && argc == 4) {
                 operation = SnapshotBooksState(
-                    session.afc, [NSString stringWithUTF8String:argv[3]]);
-            } else if ([command isEqual:@"restore-books"] && argc == 4) {
-                operation = RestoreBooksState(
                     session.afc, [NSString stringWithUTF8String:argv[3]]);
             } else if ([command isEqual:@"stage"] && argc == 9) {
                 operation = Stage(&session, @[
@@ -1108,17 +977,6 @@ int main(int argc, const char *argv[]) {
                     [NSString stringWithUTF8String:argv[6]],
                     [NSString stringWithUTF8String:argv[7]],
                     [NSString stringWithUTF8String:argv[8]],
-                ]);
-            } else if ([command isEqual:@"finish"] && argc == 11) {
-                operation = Finish(&session, @[
-                    [NSString stringWithUTF8String:argv[3]],
-                    [NSString stringWithUTF8String:argv[4]],
-                    [NSString stringWithUTF8String:argv[5]],
-                    [NSString stringWithUTF8String:argv[6]],
-                    [NSString stringWithUTF8String:argv[7]],
-                    [NSString stringWithUTF8String:argv[8]],
-                    [NSString stringWithUTF8String:argv[9]],
-                    [NSString stringWithUTF8String:argv[10]],
                 ]);
             } else if ([command isEqual:@"finish-write"] && argc == 7) {
                 operation = FinishWrite(&session, @[
@@ -1135,20 +993,6 @@ int main(int argc, const char *argv[]) {
                     [NSString stringWithUTF8String:argv[6]],
                     [NSString stringWithUTF8String:argv[7]],
                 ]);
-            } else if ([command isEqual:@"afc-read"] && argc == 5) {
-                NSString *mediaPath = [NSString stringWithUTF8String:argv[3]];
-                NSString *localOut = [NSString stringWithUTF8String:argv[4]];
-                if (!IsSafeRelativePath(mediaPath)) {
-                    operation = @{ @"ok": @NO, @"error": @"unsafe media path" };
-                } else {
-                    NSData *data = AFCReadFileWithLimit(
-                        session.afc, mediaPath, 32 * 1024 * 1024);
-                    BOOL wrote = data &&
-                        [data writeToFile:localOut options:NSDataWritingAtomic error:nil];
-                    operation = @{ @"ok": @(wrote),
-                                   @"size": @(data.length),
-                                   @"path": mediaPath };
-                }
             }
         }
 

@@ -54,7 +54,6 @@ class WalletService:
         self._scan_process = None
         self._reaping_scanners = set()
         self._scan_stop = threading.Event()
-        self._flash_thread = None
         self._scanning = self._checking = self._reading_cache = self._flashing = False
         self._progress = 0.0
         self._status = "Ready"
@@ -135,8 +134,8 @@ class WalletService:
         if mutation and (self._flashing or self._checking):
             raise ValueError("Wait for the current device operation to finish.")
 
-    def _card(self, card_id, *, verified=True):
-        if not valid_card_id(card_id) or (verified and card_id not in self._verified):
+    def _card(self, card_id):
+        if not valid_card_id(card_id) or card_id not in self._verified:
             raise ValueError("Scan this card on the selected iPhone before changing its artwork.")
         row = next((record for record in self._records if record["id"] == card_id), None)
         if row is None:
@@ -541,7 +540,7 @@ class WalletService:
         self._error = self._success = None
         self._status = "Preparing card artwork…"
         self._log(f"Writing {len(targets)} card(s)." + (" All selected artwork is unchanged; writing again." if not changed else f" Skipping {len(selected) - len(changed)} unchanged card(s)."))
-        self._flash_thread = self._start_thread(self._flash_worker, udid, targets)
+        self._start_thread(self._flash_worker, udid, targets)
 
     def _prepare_image(self, data):
         if self._image_preparer:

@@ -136,17 +136,3 @@ def build_catalog(root: Path, confirmed_ids: list[str], product: str) -> dict:
         result["warnings"].append("Some membership metadata could not be read. The cache list may be incomplete.")
     result["memberships"] = unique_cards(result["memberships"])
     return result
-
-
-def main():
-    import sys
-    request = json.load(sys.stdin)
-    ids = request.get("confirmedIDs", [])
-    product = request.get("product", "")
-    if not isinstance(ids, list) or not all(isinstance(x, str) for x in ids) or not isinstance(product, str):
-        raise ValueError("Invalid catalog request")
-    print(json.dumps(build_catalog(Path.home() / "Library/Passes", ids, product), ensure_ascii=False))
-
-
-if __name__ == "__main__":
-    main()
