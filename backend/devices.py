@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start the AirCard browser interface and discover connected Apple devices."""
+"""Discover connected Apple devices using the native macOS helper."""
 
 from __future__ import annotations
 
@@ -71,13 +71,3 @@ def get_all_connected_devices() -> list[dict]:
 
     sorted_raw = iphones + other_paired + unpaired
     return [format_device(d) for d in sorted_raw]
-
-
-def main():
-    # Import only when launching: the local service uses the discovery helpers.
-    from .aircard_server import main as serve
-    return serve()
-
-
-if __name__ == "__main__":
-    main()

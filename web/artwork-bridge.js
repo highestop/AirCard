@@ -17,13 +17,13 @@
     }
 
     initialize(image = null, name = "artwork.png") {
-      return { channel: "aircard-artwork", type: "init", session: this.session,
+      return { channel: "apple-wallet-card-skinner-artwork", type: "init", session: this.session,
         targetCount: this.ids.length, image, name };
     }
 
     isMessage(event, type) {
       return !this.closed && event.origin === this.origin && event.source === this.source &&
-        event.data?.channel === "aircard-artwork" && event.data.type === type && event.data.session === this.session;
+        event.data?.channel === "apple-wallet-card-skinner-artwork" && event.data.type === type && event.data.session === this.session;
     }
 
     accept(event, udid, cardIDs) {
@@ -38,5 +38,5 @@
     close() { this.closed = true; }
   }
   if (typeof module !== "undefined" && module.exports) module.exports = ArtworkSession;
-  else root.AirCardArtworkSession = ArtworkSession;
+  else root.WalletArtworkSession = ArtworkSession;
 })(globalThis);

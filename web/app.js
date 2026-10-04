@@ -1,4 +1,4 @@
-/* AirCard's browser UI. Device authority and all writes stay in the local service. */
+/* apple-wallet-card-skinner's browser UI. Device authority and all writes stay in the local service. */
 (() => {
   "use strict";
 
@@ -78,7 +78,7 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeout || 15000);
     const headers = new Headers(options.headers || {});
-    if (token && path !== "/api/session") headers.set("X-AirCard-Token", token);
+    if (token && path !== "/api/session") headers.set("X-Apple-Wallet-Card-Skinner-Token", token);
     try {
       const response = await fetch(path, {
         ...options,
@@ -519,7 +519,7 @@
     const targets = [...new Set(ids)];
     if (targets.some((id) => !cards().some((card) => card.id === id))) return;
     const frame = ui["editor-frame"];
-    const session = new AirCardArtworkSession({ origin: location.origin, source: frame.contentWindow,
+    const session = new WalletArtworkSession({ origin: location.origin, source: frame.contentWindow,
       session: crypto.randomUUID(), udid, ids: targets });
     editorSession = session;
     const existing = cards().find((card) => targets.includes(card.id) && card.has_image && !card.image_missing);
@@ -577,7 +577,7 @@
       session.applying = false;
       ui["editor-close"].disabled = false;
       if (!applied && editorSession === session) {
-        session.source.postMessage({ channel: "aircard-artwork", type: "error", session: session.session }, session.origin);
+        session.source.postMessage({ channel: "apple-wallet-card-skinner-artwork", type: "error", session: session.session }, session.origin);
       }
     }
   }

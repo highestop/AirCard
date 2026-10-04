@@ -1,6 +1,6 @@
-"""Start AirCard with ``python3 -m backend`` from the repository root."""
+"""Start apple-wallet-card-skinner with ``python3 -m backend``."""
 
-from .aircard import main
+from .server import main
 
 
 if __name__ == "__main__":

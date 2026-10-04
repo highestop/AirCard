@@ -101,7 +101,7 @@ def prepare_image(data: bytes) -> bytes:
         raise ValueError("Image files must be at most 30 MiB.")
 
     try:
-        with tempfile.TemporaryDirectory(prefix="aircard-image-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="apple-wallet-card-skinner-image-") as temporary:
             directory = Path(temporary)
             source = directory / "upload"
             working = directory / "normalized.png"

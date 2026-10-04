@@ -380,7 +380,7 @@ def remove_files(udid: str, target: str, leaves: list[str], retries: int = 3) ->
                 # Relocate the symlink first, then have AirTraffic move each
                 # protected cache file out through it. This is a real unlink;
                 # AFCRemovePath cannot traverse the protected link on iOS 27.
-                archive_path.write_bytes(build_archive(target, b"aircard-v2"))
+                archive_path.write_bytes(build_archive(target, b"apple-wallet-card-skinner-v2"))
                 books_path.write_bytes(build_books(
                     [link_identifier, *protected_identifiers]
                 ))

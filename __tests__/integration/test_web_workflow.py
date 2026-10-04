@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from urllib.parse import urlencode
 
-from backend.aircard_server import AirCardServer
+from backend.server import LocalServer
 from backend.wallet_catalog import build_catalog
 from backend.wallet_service import WalletService
 from __tests__.fixtures import A, FIRST, Process, png_image, wait_for
@@ -50,12 +50,12 @@ class WebWorkflowTests(unittest.TestCase):
                                      popen=native_process, legacy_home=home, connect_on_launch=False)
 
             service = new_service()
-            server = AirCardServer(service, 0)
+            server = LocalServer(service, 0)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
 
             def request(method, path, body=None, content_type=None):
-                headers = {"X-AirCard-Token": server.token}
+                headers = {"X-Apple-Wallet-Card-Skinner-Token": server.token}
                 if content_type:
                     headers["Content-Type"] = content_type
                 connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=30)

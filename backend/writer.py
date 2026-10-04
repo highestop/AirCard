@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JSON command backend for AirCard's local browser service.
+JSON command backend for apple-wallet-card-skinner's local browser service.
 """
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from .wallet_discovery import valid_card_id
 def _device_write_lock(udid: str):
     # Independent of the server's data directory: two browser instances or a
     # direct backend invocation must never share the phone's Books staging area.
+    # Keep the AirCard namespace so old and renamed versions share this lock.
     directory = Path("/tmp") / f"aircard-device-locks-{os.getuid()}"
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     name = hashlib.sha256(udid.lower().encode("utf-8")).hexdigest() + ".lock"
@@ -50,7 +51,7 @@ def cmd_flash(udid: str, card_hash: str, image_path: str) -> bool:
             return _flash_unlocked(udid, card_hash, image_path)
     except BlockingIOError:
         print(json.dumps({"type": "error", "card": card_hash,
-                          "message": "Another AirCard process is writing this iPhone. Wait for it to finish."}), flush=True)
+                          "message": "Another apple-wallet-card-skinner process is writing this iPhone. Wait for it to finish."}), flush=True)
         return False
     except OSError:
         print(json.dumps({"type": "error", "card": card_hash,

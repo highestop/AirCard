@@ -7,7 +7,7 @@ function fixture(ids = ['card-a', 'card-b']) {
   const source = {};
   const session = new ArtworkSession({ origin: 'http://127.0.0.1:8765', source, session: 'editor-1234', udid: 'phone-a', ids });
   const event = { origin: session.origin, source,
-    data: { channel: 'aircard-artwork', type: 'apply', session: session.session, image: new Blob(['PNG'], { type: 'image/png' }) } };
+    data: { channel: 'apple-wallet-card-skinner-artwork', type: 'apply', session: session.session, image: new Blob(['PNG'], { type: 'image/png' }) } };
   return { session, event };
 }
 
