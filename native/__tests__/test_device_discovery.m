@@ -28,6 +28,17 @@ static void TestTransportAndUSBFilter(void) {
     assert(!WalletDeviceUsesUSB(UINT_MAX));
 }
 
+static void TestTargetIdentity(void) {
+    assert(WalletDeviceMatchesTarget(1, @"00008030-00ABCDEF", @"00008030-00abcdef"));
+    assert(WalletDeviceMatchesTarget(1, @"00008030-00abcdef", @"00008030-00ABCDEF"));
+    assert(!WalletDeviceMatchesTarget(2, @"00008030-00ABCDEF", @"00008030-00abcdef"));
+    assert(!WalletDeviceMatchesTarget(0, @"00008030-00ABCDEF", @"00008030-00abcdef"));
+    assert(!WalletDeviceMatchesTarget(1, @"00008030-00ABCDE0", @"00008030-00ABCDEF"));
+    assert(!WalletDeviceMatchesTarget(1, nil, @"00008030-00ABCDEF"));
+    assert(!WalletDeviceMatchesTarget(1, @"00008030-00ABCDEF", nil));
+    assert(!WalletDeviceMatchesTarget(1, @"", @""));
+}
+
 static void TestSessionStates(void) {
     assert([WalletDeviceSessionState(YES, 1, 0, 0) isEqual:@"ready"]);
     assert([WalletDeviceSessionState(YES, 0, -1, -1) isEqual:@"unpaired"]);
@@ -92,6 +103,7 @@ int main(void) {
         TestRequestsUsbMuxOnly();
         TestTransportAndUSBFilter();
         TestSessionStates();
+        TestTargetIdentity();
         TestConnectionLifecycle();
         puts("Device discovery options, USB filtering, session states, and lifecycle passed.");
     }

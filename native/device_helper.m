@@ -138,9 +138,11 @@ static void DeviceCallback(AMDeviceNotificationCallbackInfo *info,
                            void *context) {
     (void)context;
     if (!info || !info->device || info->message != 1 || TargetDevice) return;
-    if (!WalletDeviceUsesUSB(AMDeviceGetInterfaceType(info->device))) return;
+    unsigned int interfaceType = AMDeviceGetInterfaceType(info->device);
+    if (!WalletDeviceUsesUSB(interfaceType)) return;
     CFStringRef identifier = AMDeviceCopyDeviceIdentifier(info->device);
-    BOOL matches = identifier && CFEqual(identifier, TargetIdentifier);
+    BOOL matches = WalletDeviceMatchesTarget(interfaceType,
+        (__bridge NSString *)identifier, (__bridge NSString *)TargetIdentifier);
     if (identifier) CFRelease(identifier);
     if (!matches) return;
     TargetDevice = CFRetain(info->device);
