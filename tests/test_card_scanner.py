@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from wallet_discovery import card_ids
+from backend.wallet_discovery import card_ids
 
 
 @unittest.skipUnless(sys.platform == "darwin", "The native log reader requires macOS")

@@ -15,7 +15,8 @@ import time
 import zipfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+from .paths import ROOT
+
 DEVICE_HELPER = ROOT / "build" / "device_helper"
 AIRTRAFFIC_HOST = ROOT / "build" / "airtraffic_host"
 AIRLOCK_ROOT = "/var/mobile/Media/Airlock/Book"

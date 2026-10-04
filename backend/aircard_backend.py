@@ -14,13 +14,13 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 
-from apply_card_skin import (
+from .apply_card_skin import (
     write_file,
     write_files_batch,
     remove_files,
 )
-from card_assets import CACHE_FILES, build_card_assets
-from wallet_discovery import valid_card_id
+from .card_assets import CACHE_FILES, build_card_assets
+from .wallet_discovery import valid_card_id
 
 
 @contextmanager

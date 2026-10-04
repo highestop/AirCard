@@ -28,9 +28,9 @@ cd AirCard
 已经编译过时可以直接运行：
 
 ```sh
-python3 aircard.py
+python3 -m backend
 # 自选端口，不自动打开浏览器
-python3 aircard.py --port 8766 --no-browser
+python3 -m backend --port 8766 --no-browser
 ```
 
 服务只监听 `127.0.0.1`，请使用终端显示的完整地址。刷新或关闭网页不会中断后台操作；重新打开相同地址即可继续查看。同一个数据目录只能运行一个服务实例；已经启动时直接打开现有页面。如果端口被其他程序占用，请换端口。
@@ -77,11 +77,13 @@ Mac 缓存数量不是手机卡片总数，页面顺序也不是 Wallet 显示�
 ## 仓库结构与验证
 
 - `web/`：无框架的 HTML / CSS / JavaScript 界面。
-- `aircard_server.py`：仅回环地址的 HTTP 服务。
-- `wallet_service.py`、`wallet_store.py`、`wallet_discovery.py`：设备状态、持久化、扫描和任务调度。
-- `wallet_catalog.py`：Mac Wallet 元数据读取。
-- `image_processing.py`：基于 macOS `sips` 的图片标准化。
-- `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
+- `backend/`：Python 本地服务和业务逻辑，通过 `python3 -m backend` 启动。
+  - `aircard_server.py`：仅回环地址的 HTTP 服务。
+  - `wallet_service.py`、`wallet_store.py`、`wallet_discovery.py`：设备状态、持久化、扫描和任务调度。
+  - `wallet_catalog.py`：Mac Wallet 元数据读取。
+  - `image_processing.py`：基于 macOS `sips` 的图片标准化。
+  - `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
+  - `paths.py`：统一定位仓库中的静态页面和原生工具编译产物。
 - `tools/`：原生设备通信工具。
 
 ```sh

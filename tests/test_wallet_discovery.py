@@ -1,6 +1,6 @@
 import unittest
 
-from wallet_discovery import activation_ids, card_ids, unique_records
+from backend.wallet_discovery import activation_ids, card_ids, unique_records
 
 A = "A" * 27 + "="
 B = "B" * 27 + "="

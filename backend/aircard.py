@@ -6,13 +6,13 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from pathlib import Path
+
+from .paths import ROOT
 
 
 def find_device_helper() -> str | None:
     """Find the native helper built alongside this checkout."""
-    root = Path(__file__).resolve().parent
-    candidate = root / "build" / "device_helper"
+    candidate = ROOT / "build" / "device_helper"
     return str(candidate) if candidate.is_file() and os.access(candidate, os.X_OK) else None
 
 
@@ -75,7 +75,7 @@ def get_all_connected_devices() -> list[dict]:
 
 def main():
     # Import only when launching: the local service uses the discovery helpers.
-    from aircard_server import main as serve
+    from .aircard_server import main as serve
     return serve()
 
 

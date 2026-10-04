@@ -5,7 +5,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from aircard_server import AirCardServer, MAX_IMAGE_BYTES
+from backend.aircard_server import AirCardServer, MAX_IMAGE_BYTES
 
 
 class FakeService:
@@ -91,7 +91,7 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(self.service.actions, [])
 
     def test_upload_preserves_opaque_ids_and_targets(self):
-        with patch("image_processing.prepare_image", return_value=b"normalized") as prepare:
+        with patch("backend.image_processing.prepare_image", return_value=b"normalized") as prepare:
             status, _, _ = self.request("POST", "/api/artwork?udid=phone&card_id=ABC%3D&card_id=DEF%3D", b"image")
         self.assertEqual(status, 200)
         prepare.assert_called_once_with(b"image")

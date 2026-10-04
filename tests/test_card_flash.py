@@ -9,8 +9,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import aircard_backend
-import apply_card_skin
+from backend import aircard_backend
+from backend import apply_card_skin
 
 
 DEVICE_ID = "FIXTURE-FLASH-PHONE"
@@ -24,7 +24,7 @@ PNG_1X1 = base64.b64decode(
 class CardFlashTests(unittest.TestCase):
     def test_write_lock_rejects_competing_process_and_releases_after_exit(self) -> None:
         command = [sys.executable, "-u", "-c",
-                   "import sys; from aircard_backend import _device_write_lock; "
+                   "import sys; from backend.aircard_backend import _device_write_lock; "
                    "lock = _device_write_lock(sys.argv[1]); lock.__enter__(); "
                    "print('locked', flush=True); sys.stdin.readline(); lock.__exit__(None, None, None)",
                    DEVICE_ID]
