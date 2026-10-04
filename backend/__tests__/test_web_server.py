@@ -2,6 +2,8 @@
 import http.client
 import json
 import threading
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
@@ -25,6 +27,9 @@ class FakeService:
         self.uploads.append((udid, card_ids, data))
 
     def artwork_path(self, udid, card_id):
+        return None
+
+    def preview_path(self, udid, card_id):
         return None
 
 
@@ -116,6 +121,28 @@ class WebServerTests(unittest.TestCase):
         for path in ("/../AGENTS.md", "/%2e%2e/AGENTS.md", "/server.py", "/api/artwork?udid=x&card_id=y"):
             self.assertEqual(self.request("GET", path)[0], 404)
         self.assertEqual(self.request("GET", "/api/artwork?udid=x&card_id=y", token=False)[0], 403)
+
+    def test_cached_preview_endpoint_is_authenticated_and_read_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / "cache.png"
+            image.write_bytes(b"cached image")
+            with patch.object(self.service, "preview_path", return_value=image) as lookup, \
+                    patch("backend.image_processing.prepare_image", return_value=b"PNG") as prepare:
+                url = "/api/preview?udid=phone&card_id=ABC%2B%3D"
+                self.assertEqual(self.request("GET", url, token=False)[0], 403)
+                self.assertEqual(self.request("GET", url, headers={"Origin": "https://example.com"})[0], 403)
+                lookup.assert_not_called()
+                status, headers, data = self.request("GET", url)
+                self.assertEqual((status, data), (200, b"PNG"))
+                self.assertEqual(headers["Content-Type"], "image/png")
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                lookup.assert_called_once_with("phone", "ABC+=")
+                prepare.assert_called_once_with(b"cached image")
+                self.assertEqual(self.request("GET", "/api/artwork?udid=phone&card_id=ABC%2B%3D")[0], 404)
+                self.assertEqual(self.request("POST", url, b"image")[0], 404)
+        self.assertFalse(self.service.actions)
+        self.assertFalse(self.service.uploads)
+        self.assertEqual(self.request("GET", "/api/preview?udid=phone&card_id=missing")[0], 404)
 
     def test_static_ui_and_offline_editor_are_served(self):
         for path in ("/", "/app.js", "/device-state.js", "/artwork-bridge.js", "/style.css", "/artwork/"):

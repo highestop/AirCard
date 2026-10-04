@@ -32,9 +32,10 @@ class WalletService:
     def __init__(self, data_dir: Path | None = None, *, discover_devices=None,
                  helper_finder=None, catalog_reader=None, popen=None,
                  image_preparer=None, legacy_home=None, connect_on_launch=True,
-                 presence_reader=None, presence_interval=2.0):
+                 presence_reader=None, presence_interval=2.0, preview_finder=None):
         from .devices import find_device_helper, get_all_connected_devices, read_device_presence
         from .wallet_catalog import build_catalog
+        from .wallet_preview import find_cached_artwork
         self._discover_devices = discover_devices or get_all_connected_devices
         # Synthetic discovery must never cause a real device probe in tests.
         self._presence_reader = presence_reader or (read_device_presence if discover_devices is None else None)
@@ -46,6 +47,7 @@ class WalletService:
         self._refresh_request = 0
         self._helper_finder = helper_finder or find_device_helper
         self._read_catalog = catalog_reader or (lambda ids, product: build_catalog(Path.home() / "Library/Passes", ids, product))
+        self._find_preview = preview_finder or (lambda card_id: find_cached_artwork(Path.home() / "Library/Passes", card_id))
         self._popen = popen or subprocess.Popen
         self._image_preparer = image_preparer
         self._lock = threading.RLock()
@@ -57,6 +59,7 @@ class WalletService:
         self._verified = set()
         self._pending_activations = set()
         self._catalog = empty_catalog()
+        self._previews = {}
         self._threads = set()
         self._closed = False
         self._generation = 0
@@ -128,11 +131,15 @@ class WalletService:
                 if row["id"] not in self._verified:
                     continue
                 digest = self._signature(row.get("imagePath"))
+                preview, source = self._preview_locked(row)
+                preview_digest = self._signature(str(preview)) if preview else None
                 cards.append({"id": row["id"], "name": names.get(row["id"], ""),
                               "selected": row["selected"], "has_image": bool(row.get("imagePath")),
                               "image_missing": bool(row.get("imagePath")) and digest is None,
                               "is_flashed": bool(digest and self._store.data["flashed"].get(f"{udid}|{row['id']}") == digest),
-                              "image_revision": digest})
+                              "image_revision": digest,
+                              "preview_source": source if preview_digest else None,
+                              "preview_revision": preview_digest})
             return copy.deepcopy({"devices": self._devices, "device": self._device,
                                   "scanning": self._scanning, "checking": self._checking,
                                   "reading_cache": self._reading_cache, "flashing": self._flashing,
@@ -275,6 +282,21 @@ class WalletService:
             row = self._card(card_id)
             return Path(row["imagePath"]) if row.get("imagePath") and Path(row["imagePath"]).is_file() else None
 
+    def _preview_locked(self, row):
+        # A missing replacement must stay visible as an error, rather than
+        # silently substituting a reference image from the Mac cache.
+        if row.get("imagePath"):
+            return Path(row["imagePath"]), "local"
+        cached = self._previews.get(row["id"])
+        return (cached, "mac_cache") if cached else (None, None)
+
+    def preview_path(self, udid, card_id) -> Path | None:
+        with self._lock:
+            self._require_device(udid)
+            row = self._card(card_id)
+            path, _ = self._preview_locked(row)
+            return path
+
     @staticmethod
     def _connection_state(device):
         if not device:
@@ -292,6 +314,7 @@ class WalletService:
             self._catalog_generation += 1
             self._reading_cache = False
             self._catalog = empty_catalog()
+            self._previews.clear()
             self._verified.clear()
             self._pending_activations.clear()
             self._scanner_message = "Open Wallet and scan cards to verify this iPhone's saved entries."
@@ -486,11 +509,30 @@ class WalletService:
             if self._closed or request != self._catalog_generation or not self._device or self._device["udid"] != udid:
                 return
             self._catalog = result
-            self._reading_cache = False
             if self._scanning:
                 for activation in list(self._pending_activations):
                     self._record_activation_locked(activation, refresh=False)
                 self._reconcile_locked()
+            preview_ids = list(self._verified)
+            self._touch()
+        # Image decoding may be slow. Resolve references in this worker, outside
+        # the controller lock, so scan/stop and state requests stay responsive.
+        previews = {}
+        for card_id in preview_ids:
+            with self._lock:
+                if self._closed or request != self._catalog_generation:
+                    return
+            try:
+                path = self._find_preview(card_id)
+                if path:
+                    previews[card_id] = path
+            except (OSError, ValueError):
+                pass
+        with self._lock:
+            if self._closed or request != self._catalog_generation or not self._device or self._device["udid"] != udid:
+                return
+            self._previews = {card_id: path for card_id, path in previews.items() if card_id in self._verified}
+            self._reading_cache = False
             self._touch()
 
     def _schedule_catalog_locked(self):

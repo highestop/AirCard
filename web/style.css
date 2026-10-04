@@ -138,6 +138,7 @@ h1 { font-size: 28px; font-weight: 650; letter-spacing: -.8px; }
 .card-description { padding: 13px 4px 11px; }
 .card-name { font-size: 13px; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
 .card-verification { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.artwork-source { font-size: 10px; line-height: 1.5; color: var(--muted); margin-top: 4px; }
 .image-warning { color: var(--orange); font-size: 10px; margin-top: 4px; }
 .card-controls { display: flex; align-items: center; gap: 7px; padding: 2px 3px 1px; }
 .card-selection { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 10px; }

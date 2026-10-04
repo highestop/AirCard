@@ -119,13 +119,15 @@ class LocalRequestHandler(BaseHTTPRequestHandler):
                 self._send(200, {"token": self.server.token})
             elif path == "/api/state":
                 self._send(200, self.server.service.snapshot())
-            elif path == "/api/artwork":
+            elif path in ("/api/artwork", "/api/preview"):
                 query = parse_qs(urlsplit(self.path).query)
                 udid = query.get("udid", [""])[0]
                 card_id = query.get("card_id", [""])[0]
-                source = self.server.service.artwork_path(udid, card_id)
+                source = (self.server.service.preview_path(udid, card_id) if path == "/api/preview"
+                          else self.server.service.artwork_path(udid, card_id))
                 if source is None or not source.is_file():
-                    self._error(404, "Artwork file is unavailable. Choose the image again.")
+                    self._error(404, "Card preview is unavailable in the local cache." if path == "/api/preview"
+                                else "Artwork file is unavailable. Choose the image again.")
                     return
                 if source.stat().st_size > MAX_IMAGE_BYTES:
                     raise ValueError("Artwork exceeds the 30 MiB limit.")

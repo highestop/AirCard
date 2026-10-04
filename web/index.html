@@ -132,13 +132,13 @@
       <div class="artwork-zone">
         <button class="artwork-button" type="button">
           <img class="artwork-image" alt="" hidden>
-          <span class="artwork-placeholder"><svg class="icon"><use href="#i-plus"/></svg><strong>选择卡面图片</strong><span>点击选择，或将图片拖到这里</span></span>
+          <span class="artwork-placeholder"><svg class="icon"><use href="#i-plus"/></svg><strong>原卡面暂不可用</strong><span>点击选择替换图片，或将图片拖到这里</span></span>
           <span class="artwork-hover"><svg class="icon"><use href="#i-image"/></svg>更换卡面</span>
         </button>
         <button class="clear-image icon-button" type="button" title="移除本地图片" aria-label="移除本地图片" hidden><svg class="icon"><use href="#i-close"/></svg></button>
         <span class="drop-overlay" aria-hidden="true">松开以设置卡面</span>
       </div>
-      <div class="card-description"><h3 class="card-name"></h3><p class="card-verification">本次扫描已确认</p><p class="image-warning" hidden>图片文件不可用，请重新选择。</p><button class="edit-artwork text-button" type="button">编辑构图</button></div>
+      <div class="card-description"><h3 class="card-name"></h3><p class="card-verification">本次扫描已确认</p><p class="artwork-source">扫描仅识别卡片，不会读取 iPhone 原卡面。</p><p class="image-warning" hidden>本地所选图片不可用，请重新选择。</p><button class="edit-artwork text-button" type="button">编辑构图</button></div>
       <div class="card-controls"><label class="card-selection"><input class="card-checkbox" type="checkbox"><span class="card-index"></span></label><button class="copy-id" type="button" title="复制完整卡片 ID"><span class="short-id"></span><svg class="icon"><use href="#i-copy"/></svg></button><span class="card-status" title="根据本地成功写入记录判断"></span><button class="delete-card icon-button" type="button" title="移除本地卡片记录" aria-label="移除本地卡片记录"><svg class="icon"><use href="#i-trash"/></svg></button></div>
     </article>
   </template>

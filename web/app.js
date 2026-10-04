@@ -262,8 +262,8 @@
 
   function makeCardView(card, udid) {
     const node = ui["card-template"].content.firstElementChild.cloneNode(true);
-    const view = { node, udid, id: card.id, imageKey: null, disposed: false };
-    for (const name of ["artwork-zone", "artwork-button", "artwork-image", "artwork-placeholder", "clear-image", "card-name", "image-warning", "card-checkbox", "card-index", "copy-id", "short-id", "card-status", "delete-card", "edit-artwork"]) {
+    const view = { node, udid, id: card.id, imageKey: null, previewError: "", disposed: false };
+    for (const name of ["artwork-zone", "artwork-button", "artwork-image", "artwork-placeholder", "clear-image", "card-name", "artwork-source", "image-warning", "card-checkbox", "card-index", "copy-id", "short-id", "card-status", "delete-card", "edit-artwork"]) {
       view[name] = node.querySelector(`.${name}`);
     }
     view["artwork-button"].addEventListener("click", () => pickImage([card.id], udid));
@@ -302,26 +302,49 @@
     return view;
   }
 
-  function imageKey(udid, card) { return JSON.stringify([udid, card.id, card.image_revision]); }
+  function previewSource(card) {
+    // Keep existing local previews working until an older running service restarts.
+    if (card.preview_source === undefined) return card.has_image && !card.image_missing ? "local" : null;
+    return card.preview_source === "local" || card.preview_source === "mac_cache" ? card.preview_source : null;
+  }
+
+  function imageKey(udid, card) {
+    return JSON.stringify([udid, card.id, previewSource(card), card.preview_revision ?? card.image_revision,
+      card.preview_source === undefined, card.image_missing]);
+  }
 
   function artworkURL(udid, card) {
     const params = new URLSearchParams({ udid, card_id: card.id });
     return `/api/artwork?${params}`;
   }
 
+  function previewURL(udid, card) {
+    if (card.preview_source === undefined) return artworkURL(udid, card);
+    const params = new URLSearchParams({ udid, card_id: card.id });
+    return `/api/preview?${params}`;
+  }
+
+  function renderArtworkWarning(view, card) {
+    const message = view.previewError || (card.image_missing ? "本地所选图片不可用，请重新选择。" : "");
+    text(view["image-warning"], message);
+    view["image-warning"].hidden = !message;
+  }
+
   function loadArtwork(view, card) {
     const key = imageKey(view.udid, card);
     if (view.imageKey === key) return;
     view.imageKey = key;
+    view.previewError = "";
+    const source = previewSource(card);
     view["artwork-image"].hidden = true;
     view["artwork-button"].classList.remove("has-image");
     view["artwork-placeholder"].hidden = false;
-    text(view["artwork-placeholder"].querySelector("strong"), "正在读取卡面…");
+    text(view["artwork-placeholder"].querySelector("strong"), source === "mac_cache" ? "正在读取 Mac 缓存预览…" : "正在读取本地图片…");
     text(view["artwork-placeholder"].querySelector("span"), "");
     let entry = artworkCache.get(key);
     if (!entry) {
       entry = { url: null, disposed: false, promise: null };
-      entry.promise = request(artworkURL(view.udid, card)).then((response) => response.blob()).then((blob) => {
+      entry.promise = request(previewURL(view.udid, card)).then((response) => response.blob()).then((blob) => {
         if (entry.disposed) return null;
         entry.url = URL.createObjectURL(blob);
         return entry.url;
@@ -337,13 +360,16 @@
       view["artwork-image"].hidden = false;
       view["artwork-placeholder"].hidden = true;
       view["artwork-button"].classList.add("has-image");
-      view["image-warning"].hidden = true;
+      view.previewError = "";
+      renderArtworkWarning(view, card);
     }).catch(() => {
       if (view.disposed || view.imageKey !== key) return;
-      text(view["artwork-placeholder"].querySelector("strong"), "卡面预览暂时不可用");
-      text(view["artwork-placeholder"].querySelector("span"), "点击重新选择图片");
-      text(view["image-warning"], "无法读取卡面预览，请检查本地服务或重新选择图片。");
-      view["image-warning"].hidden = false;
+      text(view["artwork-placeholder"].querySelector("strong"), source === "mac_cache" ? "Mac 缓存预览暂不可用" : "本地图片预览暂不可用");
+      text(view["artwork-placeholder"].querySelector("span"), "点击选择替换图片，或将图片拖到这里");
+      view.previewError = source === "mac_cache"
+        ? "无法读取 Mac 缓存预览，请检查本地服务，或选择新的卡面图片。"
+        : "无法读取本地所选图片，请检查本地服务或重新选择。";
+      renderArtworkWarning(view, card);
       // Retry on a later connection recovery or changed image revision.
     });
   }
@@ -377,25 +403,29 @@
       view["card-checkbox"].checked = !!card.selected;
       view["card-checkbox"].setAttribute("aria-label", `选择${card.name || `卡片 ${index + 1}`}`);
       view["artwork-button"].setAttribute("aria-label", `为${card.name || `卡片 ${index + 1}`}选择卡面图片`);
-      view["artwork-image"].alt = `${card.name || "卡片"}的自定义卡面`;
+      const source = previewSource(card);
+      view["artwork-image"].alt = `${card.name || "卡片"}的${source === "mac_cache" ? "Mac 缓存预览" : "本地所选图片"}`;
+      text(view["artwork-source"], source === "mac_cache" ? "Mac 缓存预览 · 可能与 iPhone 当前卡面不同"
+        : source === "local" ? "本地所选图片 · 非 iPhone 实时卡面"
+          : "扫描仅识别卡片，不会读取 iPhone 原卡面。");
       for (const name of ["card-checkbox", "artwork-button", "clear-image", "delete-card", "edit-artwork"]) view[name].disabled = editingDisabled();
       view["clear-image"].hidden = !card.has_image && !card.image_missing;
       text(view["card-status"], card.has_image && !card.image_missing ? card.is_flashed ? "已写入" : "待写入" : "");
       view["card-status"].classList.toggle("flashed", !!card.is_flashed);
-      if (card.has_image && !card.image_missing) {
+      if (source) {
         currentImages.add(imageKey(udid, card));
         loadArtwork(view, card);
       } else {
         view.imageKey = null;
+        view.previewError = "";
         view["artwork-image"].hidden = true;
         view["artwork-image"].removeAttribute("src");
         view["artwork-button"].classList.remove("has-image");
         view["artwork-placeholder"].hidden = false;
-        text(view["artwork-placeholder"].querySelector("strong"), "选择卡面图片");
-        text(view["artwork-placeholder"].querySelector("span"), "点击选择，或将图片拖到这里");
-        view["image-warning"].hidden = !card.image_missing;
-        text(view["image-warning"], "图片文件不可用，请重新选择。");
+        text(view["artwork-placeholder"].querySelector("strong"), "原卡面暂不可用");
+        text(view["artwork-placeholder"].querySelector("span"), "点击选择替换图片，或将图片拖到这里");
       }
+      renderArtworkWarning(view, card);
     });
     for (const [key, view] of cardViews) {
       if (!currentKeys.has(key)) { view.disposed = true; view.node.remove(); cardViews.delete(key); }
@@ -521,7 +551,7 @@
     editorSession = session;
     const existing = cards().find((card) => targets.includes(card.id) && card.has_image && !card.image_missing);
     text(ui["editor-targets"], targets.length
-      ? `应用目标：打开编辑器时选定的 ${targets.length} 张卡片${existing ? "；从已有卡面开始编辑" : ""}。`
+      ? `应用目标：打开编辑器时选定的 ${targets.length} 张卡片${existing ? "；从本地所选图片开始编辑" : ""}。`
       : "未选择卡片：本次只能下载 PNG。关闭后选中卡片，再打开编辑器即可直接应用。");
     text(ui["editor-loading"], "正在打开编辑器…");
     ui["editor-loading"].hidden = false;

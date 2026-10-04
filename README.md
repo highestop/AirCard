@@ -47,6 +47,20 @@ The service listens only on `127.0.0.1`. Use the full address printed in the ter
 
 Images are converted on the Mac to **1536 × 969 PNG**, scaled proportionally to fill the frame, and cropped from the center. Common formats supported by the system image tools include PNG, JPEG, and HEIC. Each file is limited to 30 MiB, 48 MP, and 16,384 pixels on either side. Use the built-in [artwork editor](docs/artwork.md) to adjust the composition and apply it directly to selected cards, or download a PNG.
 
+### Card previews
+
+Scanning confirms card identifiers; it does not download the iPhone's current
+artwork. The page shows your chosen replacement image first. When no replacement
+has been chosen, it can show an exact-ID artwork match from this Mac's Wallet
+cache, labeled **Mac cache preview**. That cache can be missing or out of date
+and is not a live view of the phone. A card without either image shows an explicit
+unavailable-preview message; it does not mean the card on the iPhone is blank.
+
+Cached previews are references only. They do not select an image for writing,
+open as replacement artwork in the editor, or count as a successful write.
+Choose or drop your own image before writing. Previewing does not move or change
+any files on the iPhone.
+
 ### Available controls
 
 - Device selection, refresh, and reconnect; scan start, stop, and diagnostics.
