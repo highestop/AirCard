@@ -9,9 +9,13 @@ scan events update the same item; identical display names do not merge cards.
 
 Payment-card confirmation uses the activated secure-element application ID
 from the NFC log and maps it to the exact pass ID in the matched Mac cache.
-Wallet's batch resource paths can also verify existence because they are
-observed in the current iPhone log, although their order does not represent
-either user selection or Wallet display order. After one live payment ID
+Wallet's batch resource paths and structured `Dashboard loading` events can
+also verify existence because they are observed in the current iPhone log,
+although their order does not represent either user selection or Wallet
+display order. Both supported Dashboard formats require a Wallet process or
+framework context on the same log line. NFC activation parsing accepts both
+legacy `identifier = ...` and quoted JSON `identifier` fields within a
+`setActivePaymentApplet` / `requestedApplet` event. After one live payment ID
 matches exactly one remote-device cache, the remaining payment IDs in that
 same cache are included because iOS does not log every card consistently.
 
@@ -19,9 +23,9 @@ The grid contains IDs matched during the current scan. Saved records stay
 hidden and are excluded from flashing until current iPhone activity identifies
 the device's payment cache again:
 
-- **Matched in this scan** means the ID was observed in a pass/cache path or
-  exact activation event, or belongs to the one payment cache matched by such
-  a live ID.
+- **Matched in this scan** means the ID was observed in a pass/cache path,
+  structured Wallet Dashboard event, or exact activation event, or belongs
+  to the one payment cache matched by such a live ID.
 - **Saved IDs to confirm** includes migrated legacy IDs and manually added IDs
   that have not been scanned on this iPhone in the new version.
 - **Payment entries to confirm** come from one matching remote-device cache.
@@ -29,6 +33,10 @@ the device's payment cache again:
   Multiple matching devices are reported as ambiguous, rather than guessed.
 - **Mac passes to confirm** are membership/ticket metadata from the Mac's local
   Wallet library. Their presence on the connected iPhone is not assumed.
+
+Unstructured hash-like tokens and `passIDs[global]` entries do not confirm a
+card. Manually saved IDs retain the same scan requirement; adding another log
+format does not bypass device or card verification.
 
 Neither the scanned count nor cache count is presented as the phone's total.
 Cache contents can be stale or incomplete. apple-wallet-card-skinner does not synchronize the

@@ -2,9 +2,11 @@ import unittest
 import plistlib
 import struct
 import subprocess
+import sys
 from unittest.mock import patch
 
-from backend.devices import format_device, get_all_connected_devices, list_devices, read_device_presence
+from backend.devices import (MAX_DEVICE_DIAGNOSTIC_CHARS, MAX_DEVICE_OUTPUT_BYTES, MAX_DEVICE_STDERR_BYTES,
+                             _run_device_helper, format_device, get_all_connected_devices, list_devices, read_device_presence)
 
 
 MOCK_RAW_DEVICES = [
@@ -79,14 +81,67 @@ class DeviceSelectionTests(unittest.TestCase):
 
     def test_metadata_failure_is_distinct_from_no_devices(self):
         with patch("backend.devices.find_device_helper", return_value="/fake/helper"):
-            with patch("backend.devices.subprocess.check_output", side_effect=subprocess.TimeoutExpired("helper", 30)):
-                with self.assertRaisesRegex(RuntimeError, "detection failed"):
-                    list_devices()
-            with patch("backend.devices.subprocess.check_output", return_value="invalid JSON"):
-                with self.assertRaisesRegex(RuntimeError, "invalid device list"):
-                    list_devices()
-            with patch("backend.devices.subprocess.check_output", return_value="[]"):
+            for output in ("invalid JSON", "{}", "[42]", '[{"name":"Missing ID"}]'):
+                with self.subTest(output=output), patch("backend.devices._run_device_helper", return_value=(0, output, "")):
+                    with self.assertRaisesRegex(RuntimeError, "无效的设备列表"):
+                        list_devices()
+            with patch("backend.devices._run_device_helper", return_value=(0, "[]", "harmless diagnostic")):
                 self.assertEqual(list_devices(), [])
+
+    def test_failed_native_exit_preserves_bounded_stderr_even_with_empty_device_json(self):
+        diagnostic = "native permission denied: " + "x" * 1000
+        with patch("backend.devices.find_device_helper", return_value="/fake/helper"), \
+             patch("backend.devices._run_device_helper", return_value=(7, "[]", diagnostic)):
+            with self.assertRaises(RuntimeError) as failure:
+                list_devices()
+        message = str(failure.exception)
+        self.assertIn("退出码 7", message)
+        self.assertIn("native permission denied", message)
+        self.assertEqual(len(message.split("工具输出：", 1)[1]), MAX_DEVICE_DIAGNOSTIC_CHARS + 1)
+        self.assertNotIn("x" * 500, message)
+
+    def test_developer_tools_and_license_failures_offer_distinct_guidance(self):
+        cases = [("xcrun: invalid active developer path /Library/Developer/CommandLineTools", "xcode-select --install"),
+                 ("You have not agreed to the Xcode license agreements", "打开 Xcode 阅读并接受许可协议")]
+        for diagnostic, advice in cases:
+            with self.subTest(diagnostic=diagnostic), patch("backend.devices.find_device_helper", return_value="/fake/helper"), \
+                 patch("backend.devices._run_device_helper", return_value=(1, "", diagnostic)):
+                with self.assertRaises(RuntimeError) as failure:
+                    list_devices()
+                self.assertIn(advice, str(failure.exception))
+                self.assertIn(diagnostic, str(failure.exception))
+
+    def test_timeout_launch_and_malformed_output_retain_diagnostic_details(self):
+        with patch("backend.devices.find_device_helper", return_value="/fake/helper"):
+            timeout = subprocess.TimeoutExpired("helper", 30, output=b"partial output", stderr=b"native session stalled")
+            with patch("backend.devices._run_device_helper", side_effect=timeout):
+                with self.assertRaisesRegex(RuntimeError, "检测超时.*native session stalled"):
+                    list_devices()
+            with patch("backend.devices._run_device_helper", side_effect=PermissionError("permission denied")):
+                with self.assertRaisesRegex(RuntimeError, "无法运行.*permission denied"):
+                    list_devices()
+            with patch("backend.devices._run_device_helper", return_value=(0, "not JSON", "native invalid response")):
+                with self.assertRaisesRegex(RuntimeError, "无效的设备列表.*native invalid response"):
+                    list_devices()
+            with patch("backend.devices._run_device_helper", return_value=(0, "not JSON", "")):
+                with self.assertRaisesRegex(RuntimeError, "无效的设备列表.*not JSON"):
+                    list_devices()
+
+    def test_capture_drains_large_stderr_without_blocking_or_retaining_it_all(self):
+        command = [sys.executable, "-c", "import sys; sys.stderr.write('diagnostic ' * 20000); print('[]'); sys.exit(3)"]
+        code, output, diagnostic = _run_device_helper(command)
+        self.assertEqual(code, 3)
+        self.assertEqual(output.strip(), "[]")
+        self.assertEqual(len(diagnostic), MAX_DEVICE_STDERR_BYTES)
+
+    def test_capture_timeout_keeps_partial_stderr_and_oversized_stdout_is_rejected(self):
+        command = [sys.executable, "-c", "import sys,time; sys.stderr.write('waiting for session\\n'); sys.stderr.flush(); time.sleep(10)"]
+        with self.assertRaises(subprocess.TimeoutExpired) as failure:
+            _run_device_helper(command, timeout=0.5)
+        self.assertIn(b"waiting for session", failure.exception.stderr)
+        command = [sys.executable, "-c", f"import sys; sys.stdout.write('x' * {MAX_DEVICE_OUTPUT_BYTES + 1})"]
+        with self.assertRaisesRegex(RuntimeError, "返回的数据过大"):
+            _run_device_helper(command)
 
 
 class FakeMuxSocket:

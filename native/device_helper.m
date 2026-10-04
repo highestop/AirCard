@@ -6,6 +6,7 @@
 
 #import "airlift_target.h"
 #import "device_discovery.h"
+#import "cache_removal.h"
 #import "os_trace.h"
 
 typedef const void *AMDeviceRef;
@@ -917,15 +918,35 @@ static NSDictionary *FinishMovedRemoval(DeviceSession *session, NSArray<NSString
     NSString *recovered = args[2];
     NSString *snapshotRoot = args[3];
     NSInteger expectedCount = [args[4] integerValue];
+    NSArray<NSString *> *leaves = args.count >= 5
+        ? [args subarrayWithRange:NSMakeRange(5, args.count - 5)] : @[];
     BOOL safeArguments = GeneratedNamesMatch(source, linkDestination, recovered) &&
-        expectedCount > 0 && expectedCount <= 32;
+        expectedCount > 0 && expectedCount <= 32 && leaves.count == (NSUInteger)expectedCount &&
+        [NSSet setWithArray:leaves].count == leaves.count;
+    for (NSString *leaf in leaves)
+        safeArguments = safeArguments && leaf.length && ![leaf isEqual:@"."] &&
+            ![leaf isEqual:@".."] && [leaf rangeOfString:@"/"].location == NSNotFound;
     if (!safeArguments) return @{ @"ok": @NO, @"safeArguments": @NO };
 
-    NSMutableArray<NSString *> *missing = NSMutableArray.array;
+    NSMutableArray<NSNumber *> *moved = [NSMutableArray array];
+    BOOL needsListing = NO;
     for (NSInteger index = 0; index < expectedCount; index++) {
         NSString *path = [source stringByAppendingPathComponent:
             [NSString stringWithFormat:@"removed-%ld", (long)index]];
-        if (!AFCExists(session->afc, path)) [missing addObject:path];
+        BOOL present = AFCExists(session->afc, path);
+        [moved addObject:@(present)];
+        needsListing = needsListing || !present;
+    }
+    NSSet *directoryNames = needsListing
+        ? WalletCacheDirectoryNames(session->afc, linkDestination,
+            AFCDirectoryOpen, AFCDirectoryRead, AFCDirectoryClose) : nil;
+    NSMutableArray *targets = [NSMutableArray array];
+    BOOL allInvalidated = YES;
+    for (NSUInteger index = 0; index < leaves.count; index++) {
+        NSString *state = WalletCacheRemovalState([moved[index] boolValue],
+                                                  directoryNames, leaves[index]);
+        [targets addObject:@{ @"leaf": leaves[index], @"state": state }];
+        allInvalidated = allInvalidated && ![state isEqual:@"unverified"];
     }
     NSMutableArray<NSString *> *failures = NSMutableArray.array;
     if (!RemoveIfPresent(session->afc, linkDestination)) [failures addObject:@"relocated link"];
@@ -934,15 +955,12 @@ static NSDictionary *FinishMovedRemoval(DeviceSession *session, NSArray<NSString
     NSDictionary *booksRestore = RestoreBooksState(session->afc, snapshotRoot);
     if (![booksRestore[@"ok"] boolValue]) [failures addObject:@"Books preimage"];
     BOOL cleanupComplete = failures.count == 0;
-    // A missing source is already an invalidated cache entry. Report success
-    // when cleanup and Books restoration succeed, while exposing how many
-    // entries were actually moved for diagnostics.
-    return @{ @"ok": @(cleanupComplete),
+    return @{ @"ok": @(cleanupComplete && allInvalidated),
+              @"cacheRemovalVersion": @1,
               @"safeArguments": @YES,
-              @"movedCount": @(expectedCount - missing.count),
-              @"alreadyAbsentCount": @(missing.count),
-              @"allTargetsMoved": @(missing.count == 0),
-              @"missing": missing,
+              @"targets": targets,
+              @"allTargetsInvalidated": @(allInvalidated),
+              @"directoryListingComplete": @(directoryNames != nil),
               @"cleanupComplete": @(cleanupComplete),
               @"failures": failures,
               @"booksRestore": booksRestore };
@@ -1001,14 +1019,11 @@ int main(int argc, const char *argv[]) {
                     [NSString stringWithUTF8String:argv[5]],
                     [NSString stringWithUTF8String:argv[6]],
                 ]);
-            } else if ([command isEqual:@"finish-moved-removal"] && argc == 8) {
-                operation = FinishMovedRemoval(&session, @[
-                    [NSString stringWithUTF8String:argv[3]],
-                    [NSString stringWithUTF8String:argv[4]],
-                    [NSString stringWithUTF8String:argv[5]],
-                    [NSString stringWithUTF8String:argv[6]],
-                    [NSString stringWithUTF8String:argv[7]],
-                ]);
+            } else if ([command isEqual:@"finish-moved-removal"] && argc > 8) {
+                NSMutableArray *arguments = [NSMutableArray array];
+                for (int index = 3; index < argc; index++)
+                    [arguments addObject:[NSString stringWithUTF8String:argv[index]]];
+                operation = FinishMovedRemoval(&session, arguments);
             }
         }
 

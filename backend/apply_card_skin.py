@@ -344,78 +344,136 @@ def write_files_batch(
     return False
 
 
-def remove_files(udid: str, target: str, leaves: list[str], retries: int = 3) -> bool:
-    """Remove specific files through the relocated Airlift symlink.
+def _cache_removal_result(result: dict, leaves: list[str]) -> tuple[set[str], bool]:
+    """Accept per-leaf evidence only after the native cleanup was confirmed."""
+    operation = result.get("operation", {})
+    if (result.get("targetGatePassed") is not True or not isinstance(operation, dict)
+            or type(operation.get("cacheRemovalVersion")) is not int
+            or operation["cacheRemovalVersion"] != 1
+            or operation.get("safeArguments") is not True
+            or operation.get("cleanupComplete") is not True
+            or not isinstance(operation.get("booksRestore"), dict)
+            or operation["booksRestore"].get("ok") is not True):
+        return set(), False
+    targets = operation.get("targets")
+    if not isinstance(targets, list) or len(targets) != len(leaves):
+        return set(), False
+    verified = set()
+    for leaf, row in zip(leaves, targets):
+        if (not isinstance(row, dict) or row.get("leaf") != leaf
+                or row.get("state") not in ("removed", "absent", "unverified")):
+            return set(), False
+        if row["state"] == "absent" and operation.get("directoryListingComplete") is not True:
+            return set(), False
+        if row["state"] != "unverified":
+            verified.add(leaf)
+    complete = len(verified) == len(leaves)
+    if (operation.get("allTargetsInvalidated") is not complete
+            or operation.get("ok") is not complete
+            or result.get("exitCode") != (0 if complete else 2)):
+        return set(), False
+    return verified, True
 
-    Wallet only rebuilds its rendered card faces when the old cache entries are
-    absent. Overwriting them with arbitrary bytes leaves stale artwork active on
-    recent iOS releases, so cache invalidation must be a real unlink operation.
+
+def _remove_files_batch(udid: str, target: str, leaves: list[str]) -> tuple[set[str], bool]:
+    """Attempt one batch; return verified leaves and whether cleanup is safe."""
+    token = secrets.token_hex(10)
+    source = f"{SOURCE_PREFIX}{token}"
+    link_destination = f"{LINK_PREFIX}{token}"
+    recovered = f"{RECOVERED_PREFIX}{token}"
+    link_identifier = f"../../{source}/p0/p1/p2/link"
+    protected_identifiers = [f"../../{link_destination}/{leaf}" for leaf in leaves]
+    removed_destinations = [f"{source}/removed-{index}" for index in range(len(leaves))]
+
+    with tempfile.TemporaryDirectory(prefix="airlift-remove-") as temporary:
+        work = Path(temporary)
+        archive_path = work / "payload.zip"
+        books_path = work / "Books.plist"
+        snapshot_root = work / "books-snapshot"
+        snapshot_root.mkdir()
+        archive_path.write_bytes(build_archive(target, b"apple-wallet-card-skinner-v2"))
+        books_path.write_bytes(build_books([link_identifier, *protected_identifiers]))
+        try:
+            snapshot = native("snapshot-books", udid, os.fspath(snapshot_root))
+        except Exception:
+            return set(), True  # Snapshot reads have not modified device state.
+        if not operation_ok(snapshot):
+            return set(), True
+        def finish_write():
+            try:
+                result = native("finish-write", udid, source, link_destination,
+                                recovered, os.fspath(snapshot_root))
+                return operation_ok(result) and result["operation"].get("cleanupComplete") is True
+            except Exception:
+                return False
+
+        try:
+            stage = native("stage", udid, source, link_destination, recovered,
+                           os.fspath(archive_path), os.fspath(books_path), os.fspath(snapshot_root))
+            if not isinstance(stage, dict) or not isinstance(stage.get("operation"), dict):
+                raise ValueError("invalid cache staging response")
+            staged = operation_ok(stage)
+        except Exception:
+            # The stage outcome is unknown; restore the snapshot and stop.
+            finish_write()
+            return set(), False
+        if not staged:
+            if stage["operation"].get("cleanupAuthorized") is False:
+                return set(), True  # Native preflight rejected before changing anything.
+            cleaned = finish_write()
+            return set(), cleaned and stage["operation"].get("cleanupAuthorized") is True
+        # Relocate the symlink, then move each protected cache leaf out.
+        # AFCRemovePath cannot traverse this protected link on iOS 27.
+        try:
+            run_json([os.fspath(AIRTRAFFIC_HOST), udid,
+                      link_identifier, link_destination,
+                      *[part for pair in zip(protected_identifiers, removed_destinations)
+                        for part in pair]], timeout=120)
+        except Exception:
+            pass  # The completion step verifies any partial work and cleans up.
+        try:
+            finish = native("finish-moved-removal", udid, source, link_destination,
+                            recovered, os.fspath(snapshot_root), str(len(leaves)), *leaves)
+            verified, cleaned = _cache_removal_result(finish, leaves)
+            if not cleaned:
+                finish_write()
+            return verified, cleaned
+        except Exception:
+            finish_write()
+            return set(), False
+
+
+def remove_files(udid: str, target: str, leaves: list[str], retries: int = 3) -> bool:
+    """Invalidate every requested rendered face, with a per-leaf fallback.
+
+    A cache leaf succeeds only when the native helper observed its moved copy or
+    verified its absence in a complete directory listing. Partial removal and
+    permission errors must never be reported as an updated card face.
     """
     if not leaves:
         return True
-    if any(not leaf or "/" in leaf or leaf in {".", ".."} for leaf in leaves):
+    if any(not isinstance(leaf, str) or not leaf or "/" in leaf or "\0" in leaf or leaf in {".", ".."}
+           for leaf in leaves):
         raise ValueError("cache leaves must be plain file names")
-
-    for attempt in range(1, max(1, retries) + 1):
-        try:
-            token = secrets.token_hex(10)
-            source = f"{SOURCE_PREFIX}{token}"
-            link_destination = f"{LINK_PREFIX}{token}"
-            recovered = f"{RECOVERED_PREFIX}{token}"
-            link_identifier = f"../../{source}/p0/p1/p2/link"
-            protected_identifiers = [
-                f"../../{link_destination}/{leaf}" for leaf in leaves
-            ]
-            removed_destinations = [
-                f"{source}/removed-{index}" for index in range(len(leaves))
-            ]
-
-            with tempfile.TemporaryDirectory(prefix="airlift-remove-") as temporary:
-                work = Path(temporary)
-                archive_path = work / "payload.zip"
-                books_path = work / "Books.plist"
-                snapshot_root = work / "books-snapshot"
-                snapshot_root.mkdir()
-
-                # Relocate the symlink first, then have AirTraffic move each
-                # protected cache file out through it. This is a real unlink;
-                # AFCRemovePath cannot traverse the protected link on iOS 27.
-                archive_path.write_bytes(build_archive(target, b"apple-wallet-card-skinner-v2"))
-                books_path.write_bytes(build_books(
-                    [link_identifier, *protected_identifiers]
-                ))
-
-                snapshot = native("snapshot-books", udid, os.fspath(snapshot_root))
-                if not operation_ok(snapshot):
-                    raise RuntimeError("could not snapshot Books state")
-                stage = native(
-                    "stage", udid, source, link_destination, recovered,
-                    os.fspath(archive_path), os.fspath(books_path),
-                    os.fspath(snapshot_root),
-                )
-                if not operation_ok(stage):
-                    raise RuntimeError("could not stage cache removal")
-
-                atc = run_json(
-                    [os.fspath(AIRTRAFFIC_HOST), udid,
-                     link_identifier, link_destination,
-                     *[part for pair in zip(protected_identifiers, removed_destinations)
-                       for part in pair]],
-                    timeout=120,
-                )
-                if atc.get("exitCode") != 0 or not atc.get("ok"):
-                    native("finish-write", udid, source, link_destination,
-                           recovered, os.fspath(snapshot_root))
-                    raise RuntimeError("could not relocate cache link")
-
-                finish = native(
-                    "finish-moved-removal", udid, source, link_destination,
-                    recovered, os.fspath(snapshot_root), str(len(leaves)),
-                )
-                if operation_ok(finish):
-                    return True
-        except Exception:
-            pass
-        if attempt < retries:
-            time.sleep(0.4 * attempt)
-    return False
+    remaining = list(dict.fromkeys(leaves))
+    if len(remaining) > 32:
+        raise ValueError("too many cache leaves")
+    for attempt in range(max(1, retries)):
+        verified, cleaned = _remove_files_batch(udid, target, remaining)
+        if not cleaned:
+            return False
+        remaining = [leaf for leaf in remaining if leaf not in verified]
+        if not remaining:
+            return True
+        if attempt + 1 < retries:
+            time.sleep(0.4 * (attempt + 1))
+    # Missing optional leaves can prevent a combined AirTraffic transfer. Retry
+    # only unresolved leaves, and require every one to be removed or proven absent.
+    if len(set(leaves)) > 1:
+        for leaf in list(remaining):
+            verified, cleaned = _remove_files_batch(udid, target, [leaf])
+            if not cleaned:
+                return False
+            if leaf in verified:
+                remaining.remove(leaf)
+    return not remaining

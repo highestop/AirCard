@@ -1,5 +1,17 @@
 # Connection and scanning troubleshooting
 
+## Startup or device-tool errors
+
+`./start.sh` prints native build errors in the terminal. Install the Xcode
+Command Line Tools with `xcode-select --install` if they are missing. A full
+Xcode installation is not required. If an installed Xcode reports a license
+problem, open Xcode and review the agreement before retrying.
+
+Device checks preserve a bounded excerpt of the native tool error in the
+page and activity log. A failed tool, invalid response, or timeout reports an
+unknown connection state instead of claiming that no iPhone is connected.
+The service never installs developer tools or accepts a license for you.
+
 ## iPhone not found
 
 1. Connect the iPhone over USB, unlock it, and confirm that it trusts this Mac.
@@ -71,6 +83,22 @@ lengths, truncated records, and multiline paths.
 
 For more about identity verification and persistence, see
 [Card identification](wallet-discovery.md).
+
+## Cache removal did not complete
+
+An artwork update requires every requested rendered-cache file to be removed
+or confirmed absent. After a partial batch, the service retries unresolved
+files individually. Previously verified files are not moved again.
+
+The native helper confirms removal from the moved file, or confirms absence
+from a complete, successful listing of the cache directory. A missing moved
+file alone, permission failure, or incomplete directory listing is not proof
+of absence. If the device interface cannot provide that evidence, the update
+remains unsuccessful even if some artwork files were written.
+
+Books state and temporary staging must also be restored. An interrupted or
+unverified cleanup stops further attempts. After an update to this repository,
+restart with `./start.sh` to rebuild the matching native helper protocol.
 
 ## Validation scope
 

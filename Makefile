@@ -34,7 +34,7 @@ test-integration:
 build:
 	mkdir -p $@
 
-build/device_helper: native/device_helper.m native/airlift_target.h native/device_discovery.h native/os_trace.h | build
+build/device_helper: native/device_helper.m native/airlift_target.h native/device_discovery.h native/cache_removal.h native/os_trace.h | build
 	$(CLANG) $(CFLAGS) $(FOUNDATION) $(MOBILEDEVICE) $< -o $@
 	codesign --force --sign - $@
 
