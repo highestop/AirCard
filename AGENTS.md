@@ -3,6 +3,7 @@
 ## Personal fork policy
 
 - This fork is for personal customization. Keep the app and user-facing documentation free of donation prompts, social links, contributor showcases, and community participation calls.
+- Keep only Apple Wallet card artwork discovery, preparation, and synchronization. Do not reintroduce passcode themes or unrelated features when importing upstream changes.
 - Preserve required copyright and license notices in `LICENSE` and any third-party notices that remain applicable. Historical Git attribution and compatibility keys used for saved data are not promotional content.
 - When importing upstream changes, retain useful functionality while removing any newly introduced UI or documentation that conflicts with this policy.
 

@@ -73,6 +73,6 @@ ID matching, duplicate names, pending counts, repeat scanning, legacy migration,
 per-device persistence, skin identity across reordering, and clear/relaunch.
 All committed fixtures use synthetic identifiers.
 
-`./script/build_and_run.sh --verify` builds the universal macOS app and DMG and
-launches the local build. This feature reads local metadata and device logs;
-verification does not flash card artwork or modify the phone's Wallet database.
+`./build.sh` builds the universal macOS app and DMG. This feature reads local
+metadata and device logs; verification does not flash card artwork or modify
+the phone's Wallet database.

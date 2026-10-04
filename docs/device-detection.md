@@ -38,7 +38,7 @@ requested again.
 | Source baseline | AirCard 1.2.4, commit `c91d8f9` |
 
 With the change `device_helper list` returned the device with a live lockdown
-session (`product`, `version`, `name`, `language`, `bold_text`), and
+session (`product`, `version`, `name`), and
 `aircard_backend.py --device` reported `"connected": true` with
 `"airlift_compatible": true`. `device_helper syslog <udid>` reached
 `Connected to the unified device log stream`, so the scanner path is restored
