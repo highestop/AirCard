@@ -88,10 +88,6 @@ done
 echo "==> [4/6] Compiling universal Swift binary (arm64 + x86_64)..."
 if [ -z "${SWIFT_SDK:-}" ]; then
     SWIFT_SDK="$(xcrun --sdk macosx --show-sdk-path)"
-    CLT_SWIFTUI_SDK="/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk"
-    if [ "$(xcode-select -p)" = "/Library/Developer/CommandLineTools" ] && [ -d "$CLT_SWIFTUI_SDK" ]; then
-        SWIFT_SDK="$CLT_SWIFTUI_SDK"
-    fi
 fi
 swiftc -sdk "$SWIFT_SDK" -O -parse-as-library -target arm64-apple-macosx14.0 AirCardApp.swift Sources/WalletDiscovery.swift Sources/WalletDiagnosticsView.swift -o build/AirCard_arm64
 swiftc -sdk "$SWIFT_SDK" -O -parse-as-library -target x86_64-apple-macosx14.0 AirCardApp.swift Sources/WalletDiscovery.swift Sources/WalletDiagnosticsView.swift -o build/AirCard_x86_64
