@@ -76,14 +76,14 @@ Mac 缓存数量不是手机卡片总数，页面顺序也不是 Wallet 显示�
 
 ## 仓库结构与验证
 
+Python 模块统一位于 `backend/`，通过 `python3 -m backend` 启动；`backend/paths.py` 统一定位仓库中的静态页面和原生工具编译产物。
+
 - `web/`：无框架的 HTML / CSS / JavaScript 界面。
-- `backend/`：Python 本地服务和业务逻辑，通过 `python3 -m backend` 启动。
-  - `aircard_server.py`：仅回环地址的 HTTP 服务。
-  - `wallet_service.py`、`wallet_store.py`、`wallet_discovery.py`：设备状态、持久化、扫描和任务调度。
-  - `wallet_catalog.py`：Mac Wallet 元数据读取。
-  - `image_processing.py`：基于 macOS `sips` 的图片标准化。
-  - `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
-  - `paths.py`：统一定位仓库中的静态页面和原生工具编译产物。
+- `aircard_server.py`：仅回环地址的 HTTP 服务。
+- `wallet_service.py`、`wallet_store.py`、`wallet_discovery.py`：设备状态、持久化、扫描和任务调度。
+- `wallet_catalog.py`：Mac Wallet 元数据读取。
+- `image_processing.py`：基于 macOS `sips` 的图片标准化。
+- `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
 - `tools/`：原生设备通信工具。
 
 ```sh
