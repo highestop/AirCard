@@ -30,6 +30,7 @@ extern int AMDeviceNotificationSubscribeWithOptions(
     CFDictionaryRef options);
 extern int AMDeviceNotificationUnsubscribe(AMDeviceNotificationRef subscription);
 extern CFStringRef AMDeviceCopyDeviceIdentifier(AMDeviceRef device);
+extern unsigned int AMDeviceGetInterfaceType(AMDeviceRef device);
 extern CFTypeRef AMDeviceCopyValue(AMDeviceRef device,
                                    CFStringRef domain,
                                    CFStringRef key);
@@ -136,6 +137,7 @@ static void DeviceCallback(AMDeviceNotificationCallbackInfo *info,
                            void *context) {
     (void)context;
     if (!info || !info->device || info->message != 1 || TargetDevice) return;
+    if (!WalletDeviceUsesUSB(AMDeviceGetInterfaceType(info->device))) return;
     CFStringRef identifier = AMDeviceCopyDeviceIdentifier(info->device);
     BOOL matches = identifier && CFEqual(identifier, TargetIdentifier);
     if (identifier) CFRelease(identifier);
@@ -152,7 +154,7 @@ static int FindTarget(void) {
         0,
         NULL,
         &subscription,
-        (__bridge CFDictionaryRef)WalletDeviceNotificationOptions(NO));
+        (__bridge CFDictionaryRef)WalletDeviceNotificationOptions(YES));
     if (status == 0)
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 30.0, false);
     if (subscription) AMDeviceNotificationUnsubscribe(subscription);
@@ -164,26 +166,37 @@ static int FindTarget(void) {
 // Discovery and log streaming go straight through MobileDevice.framework, the
 // same way the flash path does, so the app needs no libimobiledevice tooling.
 
-static NSMutableArray<NSMutableDictionary *> *DiscoveredDevices;
+static NSMutableDictionary<NSValue *, NSDictionary *> *DiscoveredConnections;
 
 static void EnumerateCallback(AMDeviceNotificationCallbackInfo *info,
                               void *context) {
     (void)context;
-    if (!info || !info->device || info->message != 1) return;
-    CFStringRef identifier = AMDeviceCopyDeviceIdentifier(info->device);
-    if (!identifier) return;
-    NSString *udid =
-        CFBridgingRelease(CFStringCreateCopy(kCFAllocatorDefault, identifier));
-    CFRelease(identifier);
-    for (NSDictionary *seen in DiscoveredDevices) {
-        if ([seen[@"udid"] isEqual:udid]) return;
+    if (!info || !info->device) return;
+    NSValue *handle = [NSValue valueWithPointer:info->device];
+    if (info->message == 2) {
+        WalletUpdateDeviceConnection(DiscoveredConnections, handle, 2, nil);
+        return;
     }
+    if (info->message != 1) return;
+    NSString *udid = CFBridgingRelease(
+        AMDeviceCopyDeviceIdentifier(info->device));
+    if (!udid.length) return;
 
-    NSMutableDictionary *entry = [@{@"udid": udid} mutableCopy];
-    if (AMDeviceConnect(info->device) == 0) {
-        if (!AMDeviceIsPaired(info->device)) AMDevicePair(info->device);
-        if (AMDeviceValidatePairing(info->device) == 0 &&
-            AMDeviceStartSession(info->device) == 0) {
+    NSMutableDictionary *entry = [@{
+        @"udid": udid,
+        @"transport": WalletDeviceTransport(AMDeviceGetInterfaceType(info->device)),
+        @"session_state": @"unavailable",
+    } mutableCopy];
+    BOOL connected = AMDeviceConnect(info->device) == 0;
+    int paired = -1, validation = -1, session = -1;
+    if (connected) {
+        // Listing only checks existing trust. It must never initiate pairing.
+        paired = AMDeviceIsPaired(info->device);
+        if (paired == 1) {
+            validation = AMDeviceValidatePairing(info->device);
+            if (validation == 0) session = AMDeviceStartSession(info->device);
+        }
+        if (session == 0) {
             NSDictionary<NSString *, NSString *> *keys = @{
                 @"name": @"DeviceName",
                 @"version": @"ProductVersion",
@@ -200,11 +213,13 @@ static void EnumerateCallback(AMDeviceNotificationCallbackInfo *info,
         }
         AMDeviceDisconnect(info->device);
     }
-    [DiscoveredDevices addObject:entry];
+    entry[@"session_state"] = WalletDeviceSessionState(
+        connected, paired, validation, session);
+    WalletUpdateDeviceConnection(DiscoveredConnections, handle, 1, entry);
 }
 
 static int ListDevices(void) {
-    DiscoveredDevices = [NSMutableArray array];
+    DiscoveredConnections = [NSMutableDictionary dictionary];
     AMDeviceNotificationRef subscription = NULL;
     int status = AMDeviceNotificationSubscribeWithOptions(
         EnumerateCallback,
@@ -212,11 +227,12 @@ static int ListDevices(void) {
         0,
         NULL,
         &subscription,
-        (__bridge CFDictionaryRef)WalletDeviceNotificationOptions(YES));
+        (__bridge CFDictionaryRef)WalletDeviceNotificationOptions(NO));
     if (status == 0)
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 2.0, false);
     if (subscription) AMDeviceNotificationUnsubscribe(subscription);
-    NSData *data = [NSJSONSerialization dataWithJSONObject:DiscoveredDevices
+    NSArray *devices = WalletPreferredDevices(DiscoveredConnections);
+    NSData *data = [NSJSONSerialization dataWithJSONObject:devices
                                                    options:0
                                                      error:nil];
     if (data) {

@@ -13,8 +13,8 @@ import zlib
 A = "A" * 27 + "="
 B = "B" * 27 + "="
 C = "C" * 27 + "="
-FIRST = {"udid": "first-phone", "name": "First", "product": "iPhone16,1", "version": "27", "connected": True}
-SECOND = {"udid": "second-phone", "name": "Second", "product": "iPhone16,1", "version": "27", "connected": True}
+FIRST = {"udid": "first-phone", "name": "First", "product": "iPhone16,1", "version": "27", "connected": True, "transport": "usb", "session_state": "ready", "present": True}
+SECOND = {"udid": "second-phone", "name": "Second", "product": "iPhone16,1", "version": "27", "connected": True, "transport": "usb", "session_state": "ready", "present": True}
 
 
 def png_image(width, height, color):

@@ -118,7 +118,7 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/api/artwork?udid=x&card_id=y", token=False)[0], 403)
 
     def test_static_ui_and_offline_editor_are_served(self):
-        for path in ("/", "/app.js", "/artwork-bridge.js", "/style.css", "/artwork/"):
+        for path in ("/", "/app.js", "/device-state.js", "/artwork-bridge.js", "/style.css", "/artwork/"):
             status, headers, data = self.request("GET", path, token=False)
             self.assertEqual(status, 200, path)
             self.assertTrue(data)

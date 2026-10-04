@@ -371,3 +371,186 @@ class WalletServiceTests(unittest.TestCase):
         self.service.close()
         store = WalletStore(Path(self.temp.name) / "data", Path(self.temp.name))
         self.assertEqual(store.records("first-phone"), [])
+
+
+class DeviceConnectionStateTests(unittest.TestCase):
+    """Exercise connection boundaries with the standard synthetic controller."""
+
+    setUp = WalletServiceTests.setUp
+    tearDown = WalletServiceTests.tearDown
+    scan = WalletServiceTests.scan
+    stop = WalletServiceTests.stop
+
+    def test_network_devices_are_visible_but_cannot_scan_write_or_mutate(self):
+        self.devices = [dict(FIRST, transport="network", connected=True)]
+        self.service.dispatch("devices.refresh", {})
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        state = self.service.snapshot()
+        self.assertEqual(state["device"]["transport"], "network")
+        self.assertFalse(state["device"]["connected"])
+        for action in ("scan.start", "flash.start", "cards.clear", "catalog.refresh"):
+            with self.subTest(action=action), self.assertRaisesRegex(ValueError, "ready USB"):
+                self.service.dispatch(action, {"udid": FIRST["udid"]})
+        with self.assertRaisesRegex(ValueError, "ready USB"):
+            self.service.assign_artwork(FIRST["udid"], [A], b"image")
+        self.assertEqual(self.commands, [])
+
+    def test_unchanged_presence_preserves_running_scan_and_verified_cards(self):
+        process = self.scan(A)
+        before = self.service.snapshot()
+        for _ in range(3):
+            self.service._apply_presence([dict(FIRST, udid=FIRST["udid"].upper()), SECOND])
+        after = self.service.snapshot()
+        self.assertTrue(after["scanning"])
+        self.assertFalse(process.terminated)
+        self.assertEqual(after["cards"], before["cards"])
+        self.assertEqual(after["device"], before["device"])
+        self.assertFalse(after["checking"])
+        self.stop()
+
+    def test_selected_disconnect_stops_scan_hides_cards_and_does_not_switch(self):
+        process = self.scan(A)
+        self.service._apply_presence([SECOND])
+        wait_for(lambda: not self.service.snapshot()["scanning"])
+        state = self.service.snapshot()
+        self.assertEqual(state["device"]["udid"], FIRST["udid"])
+        self.assertIs(state["device"]["present"], False)
+        self.assertEqual(state["cards"], [])
+        self.assertEqual(state["hidden_count"], 1)
+        self.assertTrue(process.terminated)
+        process.feed(f"Wallet /Cards/{B}.pkpass/card.png\n")
+        self.assertEqual(self.service.snapshot()["cards"], [])
+        self.service._apply_presence([FIRST, SECOND])
+        self.assertFalse(self.service.snapshot()["device"]["connected"])
+        self.service.dispatch("devices.refresh", {})
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        self.assertTrue(self.service.snapshot()["device"]["connected"])
+        self.assertEqual(self.service.snapshot()["cards"], [])
+        self.scan(A)
+        self.stop()
+
+    def test_usb_to_network_invalidates_current_scan_evidence(self):
+        self.scan(A)
+        self.stop()
+        self.service._apply_presence([dict(FIRST, transport="network"), SECOND])
+        state = self.service.snapshot()
+        self.assertEqual(state["device"]["transport"], "network")
+        self.assertFalse(state["device"]["connected"])
+        self.assertEqual(state["cards"], [])
+
+    def test_presence_failure_is_unknown_and_recovery_requires_reverification(self):
+        self.scan(A)
+        self.stop()
+        self.service._apply_presence(None)
+        self.assertIsNone(self.service.snapshot()["device"]["present"])
+        self.assertFalse(self.service.snapshot()["device"]["connected"])
+        self.assertEqual(self.service.snapshot()["cards"], [])
+        self.service._apply_presence([FIRST, SECOND])
+        self.service.dispatch("devices.refresh", {})
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        self.assertTrue(self.service.snapshot()["device"]["connected"])
+        self.assertEqual(self.service.snapshot()["cards"], [])
+
+    def test_stale_metadata_cannot_restore_usb_after_passive_disconnect(self):
+        entered = threading.Event()
+        release = threading.Event()
+        def discover():
+            entered.set()
+            release.wait(2)
+            return [FIRST, SECOND]
+        self.service._discover_devices = discover
+        self.service.dispatch("devices.refresh", {})
+        self.assertTrue(entered.wait(2))
+        self.service._apply_presence([SECOND])
+        release.set()
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        self.assertIs(self.service.snapshot()["device"]["present"], False)
+        self.assertFalse(self.service.snapshot()["device"]["connected"])
+
+    def test_native_refresh_omitting_present_usb_does_not_reuse_cached_readiness(self):
+        self.service._apply_presence([FIRST, SECOND])
+        self.devices = [SECOND]
+        self.service.dispatch("devices.refresh", {})
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        device = self.service.snapshot()["device"]
+        self.assertEqual(device["name"], FIRST["name"])
+        self.assertEqual(device["transport"], "usb")
+        self.assertEqual(device["session_state"], "unavailable")
+        self.assertFalse(device["connected"])
+
+    def test_metadata_failure_preserves_unknown_selected_row(self):
+        def discover():
+            raise RuntimeError("Device metadata unavailable")
+        self.service._discover_devices = discover
+        self.service.dispatch("devices.refresh", {})
+        wait_for(lambda: not self.service.snapshot()["checking"])
+        device = self.service.snapshot()["device"]
+        self.assertEqual(device["udid"], FIRST["udid"])
+        self.assertIsNone(device["present"])
+        self.assertFalse(device["connected"])
+
+    def test_disconnect_and_reconnect_during_write_finishes_cleanup_but_stops_batch(self):
+        self.scan(A, B)
+        self.stop()
+        self.service.assign_artwork(FIRST["udid"], [A, B], b"image")
+        process = Process()
+        self.flash_results = [process]
+        self.service.dispatch("flash.start", {"udid": FIRST["udid"]})
+        wait_for(lambda: process in self.processes)
+        before = len(self.commands)
+        self.service._apply_presence([])
+        self.assertFalse(process.terminated)
+        self.assertTrue(self.service.snapshot()["flashing"])
+        self.service._apply_presence([FIRST])
+        # Model even a later successful session probe during the same write.
+        with self.service._lock:
+            self.service._devices = [dict(FIRST)]
+            self.service._activate_locked(dict(FIRST))
+        process.feed(json.dumps({"type": "success"}))
+        process.end()
+        wait_for(lambda: not self.service.snapshot()["flashing"])
+        self.assertEqual(len(self.commands), before)
+        self.assertEqual(self.service.snapshot()["cards"], [])
+        self.assertIn("connection changed", self.service.snapshot()["error"])
+        self.assertIsNone(self.service.snapshot()["success"])
+
+
+class PresenceMonitorLifecycleTests(unittest.TestCase):
+    def test_injected_monitor_recovers_and_shutdown_wakes_long_wait(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = {"result": [FIRST], "reads": 0, "probes": 0}
+            def presence():
+                state["reads"] += 1
+                result = state["result"]
+                if isinstance(result, Exception):
+                    raise result
+                return result
+            def metadata():
+                state["probes"] += 1
+                return [FIRST]
+            service = WalletService(Path(directory) / "data", legacy_home=Path(directory),
+                                    discover_devices=metadata, presence_reader=presence, presence_interval=0.01,
+                                    helper_finder=lambda: "/fake/helper", catalog_reader=lambda ids, product: empty_catalog())
+            try:
+                wait_for(lambda: service.snapshot()["device"] and service.snapshot()["device"]["connected"])
+                wait_for(lambda: state["reads"] >= 2)
+                probes = state["probes"]
+                count = state["reads"]
+                wait_for(lambda: state["reads"] >= count + 3)
+                self.assertEqual(state["probes"], probes)
+                state["result"] = OSError("temporary usbmuxd failure")
+                wait_for(lambda: service.snapshot()["device"]["present"] is None)
+                state["result"] = [FIRST]
+                wait_for(lambda: service.snapshot()["device"]["connected"])
+                self.assertGreater(state["probes"], probes)
+                service._presence_interval = 60
+                count = state["reads"]
+                wait_for(lambda: state["reads"] > count)
+                closed = threading.Event()
+                thread = threading.Thread(target=lambda: (service.close(), closed.set()))
+                thread.start()
+                self.assertTrue(closed.wait(1), "shutdown must wake the passive monitor immediately")
+                thread.join()
+                self.assertFalse(service._presence_thread.is_alive())
+            finally:
+                service.close()

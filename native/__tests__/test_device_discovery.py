@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 
-@unittest.skipUnless(sys.platform == "darwin", "The native discovery options require macOS")
+@unittest.skipUnless(sys.platform == "darwin", "Native device discovery requires macOS")
 class DeviceDiscoveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -19,11 +19,11 @@ class DeviceDiscoveryTests(unittest.TestCase):
             check=True, capture_output=True, text=True,
         )
 
-    def test_device_options_request_usb_mux_only(self):
+    def test_device_discovery_status_transport_and_lifecycle(self):
         result = subprocess.run(
             [str(self.executable)], check=True, capture_output=True, text=True,
         )
-        self.assertIn("USB mux-only device discovery options passed", result.stdout)
+        self.assertIn("Device discovery options, USB filtering, session states, and lifecycle passed", result.stdout)
 
 
 if __name__ == "__main__":

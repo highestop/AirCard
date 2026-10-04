@@ -17,9 +17,24 @@ disappear from discovery, so the current implementation leaves that option
 disabled. `native/__tests__/test_device_discovery.py` and its native tests guard
 against reintroducing this issue.
 
-Device selection does not automatically switch to another iPhone when the
-target disconnects. After reconnecting, explicitly select the current device
-in the interface.
+## Device shown after unplugging USB
+
+A paired iPhone may still be discoverable over the network. The selector shows
+wireless discovery separately from a ready USB connection. A wireless entry
+does not enable card scanning or writing; connect the iPhone with a USB cable.
+
+The local service automatically checks device presence using a read-only
+`usbmuxd` device-list request. It does not initiate pairing. The native session
+check also avoids pairing: an untrusted device is shown as unpaired, while a
+failed session is shown as unavailable without assuming that the phone is
+locked. Unlock the iPhone, establish trust with this Mac, and refresh to retry.
+
+If the selected iPhone disappears, its entry is marked disconnected. A failed
+presence check instead reports an unknown state. Neither state is treated as
+ready. The service preserves the selected device and never silently switches
+to another iPhone. Losing the USB connection invalidates the current card
+verification, so scan again after reconnecting. An in-flight write is allowed
+to finish its cleanup before the service stops processing further cards.
 
 ## Connected, but scanning finds no cards
 
