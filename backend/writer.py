@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JSON command backend for AppleWalletCardSkinner's local browser service.
+JSON command backend for Apple Wallet Card Skinner's local browser service.
 """
 from __future__ import annotations
 

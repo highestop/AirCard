@@ -1,4 +1,4 @@
-/* AppleWalletCardSkinner's browser UI. Device authority and all writes stay in the local service. */
+/* Apple Wallet Card Skinner's browser UI. Device authority and all writes stay in the local service. */
 (() => {
   "use strict";
 
@@ -470,8 +470,8 @@
     const lines = Array.isArray(state?.logs) ? state.logs : [];
     // Normalize only historical scanner labels, preserving diagnostic bodies.
     const next = lines.map((line) => String(line).replace(
-      /^(\[\d{2}:\d{2}:\d{2}\] )?(?:apple-wallet-card-skinner|AirCard) scanner: /,
-      "$1AppleWalletCardSkinner scanner: ",
+      /^(\[\d{2}:\d{2}:\d{2}\] )?(?:AppleWalletCardSkinner|apple-wallet-card-skinner|AirCard) scanner: /,
+      "$1Apple Wallet Card Skinner scanner: ",
     )).join("\n");
     text(ui["log-count"], lines.length);
     text(ui["log-status"], state?.flashing ? "正在写入" : state?.scanning ? "正在扫描" : "设备活动与写入记录");

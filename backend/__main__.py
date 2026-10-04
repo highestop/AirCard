@@ -1,4 +1,4 @@
-"""Start AppleWalletCardSkinner with ``python3 -m backend``."""
+"""Start Apple Wallet Card Skinner with ``python3 -m backend``."""
 
 from .server import main
 
