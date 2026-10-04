@@ -1,4 +1,4 @@
-# apple-wallet-card-skinner repository workflow
+# AppleWalletCardSkinner repository workflow
 
 ## Project language
 
@@ -10,7 +10,9 @@
 
 ## Personal fork policy
 
-- The project name is `apple-wallet-card-skinner`. Use it consistently in documentation, interface branding, and new installation paths. Preserve legacy storage keys, data-directory fallback, and device-lock compatibility when changing names.
+- Use `AppleWalletCardSkinner` as the product display name in documentation, page titles, interface branding, accessible labels, CLI output, logs, and exported filenames. Keep `apple-wallet-card-skinner` as the GitHub repository slug and clone-directory name; do not change Git remote URLs to the display name.
+- New installations use `~/Library/Application Support/AppleWalletCardSkinner/`. If it does not exist, reuse an existing `apple-wallet-card-skinner` data directory first, then `AirCard`, without moving files. An explicit `--data-dir` always wins.
+- Preserve technical compatibility identifiers when changing display names: saved-data keys, legacy directory lookup, device-lock namespaces, HTTP token headers, and the `apple-wallet-card-skinner-artwork` message channel. Historical scanner prefixes must remain readable.
 - This fork is for personal customization. Keep the app and user-facing documentation free of donation prompts, social links, contributor showcases, and community participation calls.
 - Keep only Apple Wallet card artwork discovery, preparation, and synchronization. Do not reintroduce passcode themes or unrelated features when importing upstream changes.
 - The interface is a local browser page served only on `127.0.0.1` by Python, with the native macOS USB helpers underneath. Keep device verification, persistence, and write authorization in the local service. Do not reintroduce SwiftUI, a macOS app bundle, or DMG packaging.

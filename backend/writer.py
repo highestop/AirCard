@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JSON command backend for apple-wallet-card-skinner's local browser service.
+JSON command backend for AppleWalletCardSkinner's local browser service.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 
+from . import APP_NAME
 from .apply_card_skin import (
     write_file,
     write_files_batch,
@@ -51,7 +52,7 @@ def cmd_flash(udid: str, card_hash: str, image_path: str) -> bool:
             return _flash_unlocked(udid, card_hash, image_path)
     except BlockingIOError:
         print(json.dumps({"type": "error", "card": card_hash,
-                          "message": "Another apple-wallet-card-skinner process is writing this iPhone. Wait for it to finish."}), flush=True)
+                          "message": f"Another {APP_NAME} process is writing this iPhone. Wait for it to finish."}), flush=True)
         return False
     except OSError:
         print(json.dumps({"type": "error", "card": card_hash,

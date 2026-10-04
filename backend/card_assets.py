@@ -6,6 +6,8 @@ import tempfile
 from pathlib import Path
 from typing import Final
 
+from . import APP_NAME
+
 PNG_ASSET_NAMES: Final = (
     "cardBackgroundCombined@3x.png",
     "cardBackgroundCombined@2x.png",
@@ -15,7 +17,7 @@ CACHE_FILES: Final = ("FrontFace", "PlaceHolder", "Preview")
 
 
 def build_card_assets(png_bytes: bytes) -> tuple[tuple[str, bytes], ...]:
-    with tempfile.TemporaryDirectory(prefix="apple-wallet-card-skinner-assets-") as temporary:
+    with tempfile.TemporaryDirectory(prefix=f"{APP_NAME}-assets-") as temporary:
         png_path = Path(temporary) / "card.png"
         pdf_path = Path(temporary) / "card.pdf"
         png_path.write_bytes(png_bytes)

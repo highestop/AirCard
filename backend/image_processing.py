@@ -12,6 +12,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from . import APP_NAME
+
 WIDTH = 1536
 HEIGHT = 969
 MAX_INPUT_BYTES = 30 * 1024 * 1024
@@ -101,7 +103,7 @@ def prepare_image(data: bytes) -> bytes:
         raise ValueError("Image files must be at most 30 MiB.")
 
     try:
-        with tempfile.TemporaryDirectory(prefix="apple-wallet-card-skinner-image-") as temporary:
+        with tempfile.TemporaryDirectory(prefix=f"{APP_NAME}-image-") as temporary:
             directory = Path(temporary)
             source = directory / "upload"
             working = directory / "normalized.png"
