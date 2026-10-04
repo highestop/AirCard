@@ -1,4 +1,4 @@
-#import "../Sources/os_trace.h"
+#import "../tools/os_trace.h"
 #include <assert.h>
 
 typedef struct {

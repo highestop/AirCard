@@ -19,11 +19,11 @@ test:
 build:
 	mkdir -p $@
 
-build/device_helper: Sources/device_helper.m Sources/airlift_target.h Sources/device_discovery.h Sources/os_trace.h | build
+build/device_helper: tools/device_helper.m tools/airlift_target.h tools/device_discovery.h tools/os_trace.h | build
 	$(CLANG) $(CFLAGS) $(FOUNDATION) $(MOBILEDEVICE) $< -o $@
 	codesign --force --sign - $@
 
-build/airtraffic_host: Sources/airtraffic_host.m | build
+build/airtraffic_host: tools/airtraffic_host.m | build
 	$(CLANG) $(CFLAGS) $(FOUNDATION) $(AIRTRAFFIC) $< -o $@
 	codesign --force --sign - $@
 

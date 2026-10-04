@@ -82,7 +82,7 @@ Mac 缓存数量不是手机卡片总数，页面顺序也不是 Wallet 显示�
 - `wallet_catalog.py`：Mac Wallet 元数据读取。
 - `image_processing.py`：基于 macOS `sips` 的图片标准化。
 - `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
-- `Sources/`：原生设备通信工具。
+- `tools/`：原生设备通信工具。
 
 ```sh
 make all
