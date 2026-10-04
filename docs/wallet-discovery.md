@@ -1,11 +1,9 @@
 # Card identification and missing-card checks
 
-Development branch: `kyler/dev`.
-
 ## Implemented scope
 
 AirCard keeps cards in saved discovery order and enriches their names from the
-Mac's existing Wallet cache. Card identity, selection and skin file paths are
+Mac's existing Wallet cache. Card identity, selection and artwork references are
 stored by the full card ID, separately for each connected iPhone. Repeated
 scan events update the same item; identical display names do not merge cards.
 
@@ -54,11 +52,17 @@ under the subsequently approved, smaller scope.
 
 ## Persistence and migration
 
-Version-two records use per-device UserDefaults keys. Existing legacy stores
-remain untouched and are imported as unconfirmed IDs on first use. An empty
-version-two list is authoritative, so clearing cards does not reimport legacy
-entries on restart. Saved images retain their file paths; if an original image
-file is moved or deleted, choose it again using the unavailable-image notice.
+The Python service saves per-device records and artwork copies under
+`~/Library/Application Support/AirCard/`. On first launch it imports the old
+UserDefaults version-two records and legacy JSON lists, leaving their source
+files untouched. Imported entries remain unconfirmed until scanned. An existing
+`state.json`, including empty device lists, is authoritative and prevents
+reimporting deleted entries. Available legacy images are copied into the new
+store; missing files are shown as unavailable so they can be selected again.
+
+New browser uploads are decoded, center-cropped to 1536 × 969 PNG, and copied
+into the local store. Successful-write signatures are keyed by device and card
+ID. Changing an image makes that card eligible for incremental writing again.
 
 Saved IDs may remain after a card is removed from the phone, but they are not
 shown or eligible to flash unless a new scan matches their device cache again.
@@ -73,6 +77,8 @@ ID matching, duplicate names, pending counts, repeat scanning, legacy migration,
 per-device persistence, skin identity across reordering, and clear/relaunch.
 All committed fixtures use synthetic identifiers.
 
-`./build.sh` builds the universal macOS app and DMG. This feature reads local
-metadata and device logs; verification does not flash card artwork or modify
-the phone's Wallet database.
+`make all` builds the universal native USB helpers. `./start.sh` starts the
+loopback HTTP service and browser UI. The local service owns verification and
+write eligibility; the browser never supplies device file paths. HTTP tests
+cover session tokens, cross-origin rejection and request validation. Reading
+metadata and scanning device logs does not write artwork to the phone.

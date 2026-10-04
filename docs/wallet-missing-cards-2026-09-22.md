@@ -1,5 +1,7 @@
 # Wallet 漏识别记录：国泰会员卡与中国银行
 
+> 历史诊断记录：文中 Swift 文件对应当时版本，现已删除。当前解析与调度位于 `wallet_discovery.py` 和 `wallet_service.py`；现行行为见 [wallet-discovery.md](wallet-discovery.md)。
+
 - 日期：2026-09-22（Asia/Hong_Kong）
 - 状态：未解决；已完成一次配合真机操作的日志采集。
 - 测试版本：`kyler/dev`，`3f9ef23`（`fix: require live iPhone card verification`）。

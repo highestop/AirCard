@@ -1,37 +1,34 @@
-import subprocess
-import sys
-import platform
-import tempfile
 import unittest
-from pathlib import Path
+
+from wallet_discovery import activation_ids, card_ids, unique_records
+
+A = "A" * 27 + "="
+B = "B" * 27 + "="
+C = "C" * 27 + "="
 
 
-@unittest.skipUnless(sys.platform == 'darwin', 'Swift model checks require macOS')
 class WalletDiscoveryTests(unittest.TestCase):
-    def test_identity_order_persistence_and_scanner(self):
-        root = Path(__file__).resolve().parents[1]
-        sdk = '/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk'
-        if not Path(sdk).is_dir():
-            sdk = subprocess.check_output(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], text=True).strip()
-        with tempfile.TemporaryDirectory() as temp:
-            binary = str(Path(temp) / 'wallet-tests')
-            subprocess.run(['xcrun', 'swiftc', '-sdk', sdk, '-module-cache-path', str(Path(temp) / 'modules'),
-                            str(root / 'Sources/WalletDiscovery.swift'), str(root / 'tests/test_wallet_discovery.swift'),
-                            '-o', binary], capture_output=True, text=True, check=True)
-            result = subprocess.run([binary], capture_output=True, text=True, check=True)
-            self.assertIn('persistence and path parsing passed', result.stdout)
+    def test_requires_wallet_path_or_specific_message(self):
+        self.assertEqual(card_ids(f"Wallet /Cards/{B}.cache/Preview /Cards/{A}.pkpass/en.lproj /Cards/{B}.pkcache/FrontFace"), [B, A])
+        for text in (f"passd identifier {A}", "/Cards/<private>.pkpass", f"nfcd: passIDs[global]: {{(\"{A}\")}}", "/Cards/OM6NYhwXMZrAw0sRUjR62wmF4ZQ=.pkpass"):
+            self.assertEqual(card_ids(text), [])
+        for text, expected in ((f"Wallet /Passes/Cards/{A}/FrontFace", A), (f"PDCardFileManager: writing card {B}", B),
+                               (f"PDPassLibrary: wrote pass {A}", A), (f"VerificationCheck.{C}", C), (f"updated selected pass uniqueID: {B}", B)):
+            self.assertEqual(card_ids(text), [expected])
 
-    def test_view_model_device_isolation_and_migration(self):
-        root = Path(__file__).resolve().parents[1]
-        sdk = '/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk'
-        if not Path(sdk).is_dir():
-            sdk = subprocess.check_output(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], text=True).strip()
-        with tempfile.TemporaryDirectory() as temp:
-            binary = str(Path(temp) / 'wallet-model-tests')
-            subprocess.run(['xcrun', 'swiftc', '-sdk', sdk, '-module-cache-path', str(Path(temp) / 'modules'),
-                            '-D', 'WALLET_TESTS', '-parse-as-library', '-target', platform.machine() + '-apple-macosx14.0',
-                            str(root / 'Sources/WalletDiscovery.swift'), str(root / 'Sources/WalletDiagnosticsView.swift'),
-                            str(root / 'AirCardApp.swift'), str(root / 'tests/test_wallet_viewmodel.swift'),
-                            '-o', binary], capture_output=True, text=True, check=True)
-            result = subprocess.run([binary], capture_output=True, text=True, check=True)
-            self.assertIn('clear/relaunch passed', result.stdout)
+    def test_session_lists_only_preserve_order(self):
+        cards = [f"{index:020d}AAAAAAA=" for index in range(12)]
+        self.assertEqual(card_ids('nfcd: passIDs[InSession]: {(' + ', '.join(f'"{card}"' for card in cards) + f')}} passIDs[global]: {{("{A}")}}'), cards)
+
+    def test_activation_case_and_multiline(self):
+        activation = "A00000000310100100000020"
+        self.assertEqual(activation_ids(f"setActivePaymentApplet: x requestedApplet:\n<NFApplet> {{ identifier = {activation.lower()} family=0x0 }}"), [activation])
+
+    def test_dedup_preserves_identity_selection_artwork(self):
+        rows = unique_records([{"id": B, "confirmed": True, "imagePath": "/skin-b.png", "selected": False},
+                               {"id": A, "imagePath": "/skin-a.png"}, {"id": B}, {"id": A, "confirmed": True}])
+        self.assertEqual([row["id"] for row in rows], [B, A])
+        self.assertFalse(rows[0]["selected"])
+        self.assertTrue(rows[1]["confirmed"])
+        self.assertEqual(rows[0]["imagePath"], "/skin-b.png")
+        self.assertEqual(unique_records([{"id": "../../bad"}]), [])
