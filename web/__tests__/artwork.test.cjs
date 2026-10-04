@@ -45,7 +45,6 @@ function harness({ embedded = false, session = 'fixture-editor-session-1234' } =
         value: '',
         handlers: {},
         classList: { add() {}, remove() {} },
-        setAttribute() {},
         addEventListener(name, handler) { this.handlers[name] = handler; },
         getContext() { return canvas; },
         toBlob(callback, type) { callback(new Blob([PNG_HEADER], { type })); }
@@ -59,7 +58,6 @@ function harness({ embedded = false, session = 'fixture-editor-session-1234' } =
   const sandbox = {
     document: {
       getElementById: element,
-      querySelectorAll() { return []; },
       documentElement: { classList: { add() {} } },
       body: { appendChild() {} },
       createElement() { const link = { click() { this.clicked = true; }, remove() {} }; links.push(link); return link; },
@@ -169,13 +167,13 @@ test('export filenames keep a useful stem and bound long or unsafe names', () =>
   assert.equal(Array.from(safeFileName('图'.repeat(300) + '.png').split('-apple-wallet-card-skinner')[0]).length, 64);
 });
 
-test('empty state disables editing and export, and defaults to Chinese', () => {
+test('empty state disables editing and export in the Chinese interface', () => {
   const h = harness();
   for (const id of ['export-button', 'zoom', 'position-x', 'position-y', 'reset-button']) {
     assert.equal(h.elements.get(id).disabled, true);
   }
   assert.equal(h.elements.get('canvas-wrap').hidden, true);
-  assert.equal(h.sandbox.document.documentElement.lang, 'zh-CN');
+  assert.match(html, /<html lang="zh-CN">/);
 });
 
 test('the latest selected image wins even when an older decode finishes later', async () => {
@@ -263,15 +261,10 @@ test('a newer invalid selection also cancels an earlier pending decode', async (
   assert.equal(h.state.busy, false);
 });
 
-test('switching language preserves framing; reset restores center while keeping the background', async () => {
+test('reset restores center while keeping the background', async () => {
   const h = harness();
   await h.loadImage();
   Object.assign(h.state, { zoom: 2, panX: 0.2, panY: 0.8, background: 'white' });
-  h.elements.get('language-toggle').handlers.click();
-  assert.equal(h.sandbox.document.documentElement.lang, 'en');
-  assert.equal(h.state.zoom, 2);
-  assert.equal(h.state.panX, 0.2);
-  assert.equal(h.state.panY, 0.8);
   h.elements.get('reset-button').handlers.click();
   assert.equal(h.state.zoom, 1);
   assert.equal(h.state.panX, 0.5);
