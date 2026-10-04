@@ -30,8 +30,8 @@ and the tester confirmed that cards appeared. No card artwork was flashed as
 part of detection testing. Stopping the helper reset the scanning UI, and a
 subsequent scan connected successfully without losing the detected cards.
 
-The iPhone 17 / iOS 27 case in [issue #28](https://github.com/Mak5er/AirCard/issues/28)
-has not been tested. Other device and OS combinations still need verification.
+The iPhone 17 / iOS 27 case has not been tested. Other device and OS
+combinations still need verification.
 
 ## Automated checks
 
@@ -46,9 +46,9 @@ records, and multiline card paths reaching the existing detection patterns.
 Fixtures contain synthetic identifiers only. The native reader tests require
 macOS and Xcode command-line tools.
 
-## Help verify other devices
+## Checking another device
 
-If your device connects but no cards appear, try this branch's build and report
-your iPhone model, iOS version, macOS version, the exact AirCard commit tested,
-and whether cards appeared after selecting them in Wallet. Include any scanner
-error message, but do not include raw device logs or full card identifiers.
+If your device connects but no cards appear, record the iPhone model, iOS
+version, macOS version, the exact AirCard commit tested, and whether cards
+appeared after selecting them in Wallet. Keep scanner errors for local
+troubleshooting; avoid saving raw device logs or full card identifiers.

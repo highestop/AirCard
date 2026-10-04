@@ -37,5 +37,3 @@
    * NOTE: Supports all system languages (RU, UK, EN, etc.) and Bold Text!
 
 ============================================================
-Developed by @mak5er & @Lumid-Off
-============================================================
