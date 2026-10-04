@@ -84,7 +84,7 @@ Python 模块统一位于 `backend/`，通过 `python3 -m backend` 启动；`bac
 - `wallet_catalog.py`：Mac Wallet 元数据读取。
 - `image_processing.py`：基于 macOS `sips` 的图片标准化。
 - `aircard_backend.py`、`apply_card_skin.py`、`card_assets.py`：卡面写入、资源生成与缓存清理。
-- `tools/`：原生设备通信工具。
+- `native/`：macOS 原生设备通信工具源码。
 
 ```sh
 make all
