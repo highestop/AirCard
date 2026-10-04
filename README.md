@@ -25,7 +25,9 @@ cd apple-wallet-card-skinner
 
 The script builds `build/device_helper` and `build/airtraffic_host` as needed, starts the local service, and opens the browser. Keep the terminal running. Press `Ctrl+C` to stop the service; an active write finishes cleanup for the current card before the service exits.
 
-Once the native tools have been built, you can start the service directly:
+After pulling updates, restart with `./start.sh` so changes to native helpers
+are rebuilt along with the Python service. Once the native tools are current,
+you can also start the service directly:
 
 ```sh
 python3 -m backend
@@ -57,7 +59,7 @@ Images are converted on the Mac to **1536 × 969 PNG**, scaled proportionally to
 
 ### Scanning and caches
 
-Payment cards are identified through NFC activation events and card resource paths. Other payment cards from a cached remote-device record on the Mac are included only after an ID in the current log uniquely matches that cache. Membership cards and tickets must be opened individually for confirmation.
+Payment cards are identified through NFC activation events, card resource paths, and structured Wallet Dashboard events. Other payment cards from a cached remote-device record on the Mac are included only after an ID in the current log uniquely matches that cache. Membership cards and tickets must be opened individually for confirmation.
 
 The Mac cache count is not the total number of cards on the phone, and the page order does not represent Wallet's display order. Refreshing the cache only rereads existing metadata on the Mac; it does not force an iCloud sync. If a scan finds nothing, check the logs for `Connected to the unified device log stream`, then reconnect, unlock, and scan again. Values shown as `<private>` in system logs cannot be recovered.
 
