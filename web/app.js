@@ -15,7 +15,7 @@
     "retry-connection", "error-notice", "error-message", "dismiss-error", "success-notice",
     "success-message", "dismiss-success", "ids-dialog", "ids-form", "ids-close",
     "manual-ids", "ids-error", "ids-cancel", "ids-submit", "image-picker", "toast",
-    "card-template",
+    "card-template", "open-editor", "editor-dialog", "editor-frame", "editor-close", "editor-targets", "editor-loading", "editor-retry",
   ].map((id) => [id, $(id)]));
 
   let token = "";
@@ -36,6 +36,7 @@
   let previousLogs = "";
   const cardViews = new Map();
   const artworkCache = new Map();
+  let editorSession = null;
 
   function text(node, value) {
     const next = String(value ?? "");
@@ -220,6 +221,8 @@
     const selectedCount = cards().filter((card) => card.selected).length;
     const ready = readyCards().length;
     const changed = changedCards().length;
+    ui["open-editor"].disabled = busy();
+    text(ui["open-editor"], selectedCount ? `编辑选中卡片的构图 · ${selectedCount} 张` : "打开卡面编辑器");
     for (const id of ["scan-toggle", "empty-scan"]) {
       const button = ui[id];
       button.disabled = editing;
@@ -263,7 +266,7 @@
   function makeCardView(card, udid) {
     const node = ui["card-template"].content.firstElementChild.cloneNode(true);
     const view = { node, udid, id: card.id, imageKey: null, disposed: false };
-    for (const name of ["artwork-zone", "artwork-button", "artwork-image", "artwork-placeholder", "clear-image", "card-name", "image-warning", "card-checkbox", "card-index", "copy-id", "short-id", "card-status", "delete-card"]) {
+    for (const name of ["artwork-zone", "artwork-button", "artwork-image", "artwork-placeholder", "clear-image", "card-name", "image-warning", "card-checkbox", "card-index", "copy-id", "short-id", "card-status", "delete-card", "edit-artwork"]) {
       view[name] = node.querySelector(`.${name}`);
     }
     view["artwork-button"].addEventListener("click", () => pickImage([card.id], udid));
@@ -273,6 +276,7 @@
     });
     view["card-checkbox"].addEventListener("change", (event) => runAction("cards.select", { udid, ids: [card.id], selected: event.target.checked }));
     view["copy-id"].addEventListener("click", () => copyID(card.id));
+    view["edit-artwork"].addEventListener("click", () => openEditor([card.id], udid));
     let dragDepth = 0;
     const resetDrag = () => { dragDepth = 0; view["artwork-zone"].classList.remove("dragging"); };
     view["artwork-zone"].addEventListener("dragenter", (event) => {
@@ -377,7 +381,7 @@
       view["card-checkbox"].setAttribute("aria-label", `选择${card.name || `卡片 ${index + 1}`}`);
       view["artwork-button"].setAttribute("aria-label", `为${card.name || `卡片 ${index + 1}`}选择卡面图片`);
       view["artwork-image"].alt = `${card.name || "卡片"}的自定义卡面`;
-      for (const name of ["card-checkbox", "artwork-button", "clear-image", "delete-card"]) view[name].disabled = editingDisabled();
+      for (const name of ["card-checkbox", "artwork-button", "clear-image", "delete-card", "edit-artwork"]) view[name].disabled = editingDisabled();
       view["clear-image"].hidden = !card.has_image && !card.image_missing;
       text(view["card-status"], card.has_image && !card.image_missing ? card.is_flashed ? "已写入" : "待写入" : "");
       view["card-status"].classList.toggle("flashed", !!card.is_flashed);
@@ -448,6 +452,10 @@
   }
 
   function render() {
+    if (editorSession && !editorSession.validFor(deviceID(), cards().map((card) => card.id))) {
+      closeEditor(true);
+      toast("设备或目标卡片已变化，编辑器已关闭。请重新选择卡片。");
+    }
     renderNotices();
     renderDevices();
     renderControls();
@@ -464,11 +472,11 @@
   }
 
   async function uploadImage(file, target) {
-    if (!target || editingDisabled()) return;
-    if (target.udid !== deviceID()) { showError("当前设备已变化，请为当前 iPhone 重新选择图片。"); return; }
+    if (!target || editingDisabled()) return false;
+    if (target.udid !== deviceID()) { showError("当前设备已变化，请为当前 iPhone 重新选择图片。"); return false; }
     const verified = new Set(cards().map((card) => card.id));
-    if (target.ids.some((id) => !verified.has(id))) { showError("卡片列表已变化，请重新选择要设置卡面的卡片。"); return; }
-    if (!file.size) { showError("这张图片是空文件，请选择其他图片。"); return; }
+    if (target.ids.some((id) => !verified.has(id))) { showError("卡片列表已变化，请重新选择要设置卡面的卡片。"); return false; }
+    if (!file.size) { showError("这张图片是空文件，请选择其他图片。"); return false; }
     pendingAction = true;
     pendingMessage = `正在准备图片：${file.name}`;
     localError = "";
@@ -485,12 +493,92 @@
       if (stateRequest) await stateRequest;
       await refreshState();
       toast(`已为 ${target.ids.length} 张卡片设置图片。`);
+      return true;
     } catch (error) {
       showError(error);
+      return false;
     } finally {
       pendingAction = false;
       pendingMessage = "";
       render();
+    }
+  }
+
+  function closeEditor(force = false) {
+    if (editorSession?.applying && !force) return;
+    editorSession?.close();
+    editorSession?.cancelReady?.();
+    editorSession = null;
+    ui["editor-dialog"].close();
+    ui["editor-frame"].removeAttribute("src");
+    ui["editor-frame"].hidden = true;
+  }
+
+  async function openEditor(ids, udid = deviceID()) {
+    if (busy() || udid !== deviceID() || editorSession) return;
+    const targets = [...new Set(ids)];
+    if (targets.some((id) => !cards().some((card) => card.id === id))) return;
+    const frame = ui["editor-frame"];
+    const session = new AirCardArtworkSession({ origin: location.origin, source: frame.contentWindow,
+      session: crypto.randomUUID(), udid, ids: targets });
+    editorSession = session;
+    const existing = cards().find((card) => targets.includes(card.id) && card.has_image && !card.image_missing);
+    text(ui["editor-targets"], targets.length
+      ? `应用目标：打开编辑器时选定的 ${targets.length} 张卡片${existing ? "；从已有卡面开始编辑" : ""}。`
+      : "未选择卡片：本次只能下载 PNG。关闭后选中卡片，再打开编辑器即可直接应用。");
+    text(ui["editor-loading"], "正在打开编辑器…");
+    ui["editor-loading"].hidden = false;
+    ui["editor-retry"].hidden = true;
+    ui["editor-close"].disabled = false;
+    frame.hidden = true;
+    ui["editor-dialog"].showModal();
+    const ready = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("编辑器未能加载。请检查本地服务，然后重试。")), 12000);
+      session.resolveReady = () => { clearTimeout(timer); resolve(); };
+      session.cancelReady = () => { clearTimeout(timer); reject(new Error("Editor closed")); };
+    });
+    frame.src = `/artwork/?session=${encodeURIComponent(session.session)}`;
+    let initialImage = null;
+    try {
+      const image = existing ? request(artworkURL(udid, existing)).then((response) => response.blob()).catch(() => {
+        if (editorSession === session) text(ui["editor-targets"], `${ui["editor-targets"].textContent} 已有图片读取失败，可重新选择图片。`);
+        return null;
+      }) : Promise.resolve(null);
+      const [, blob] = await Promise.all([ready, image]);
+      initialImage = blob;
+    } catch (error) {
+      if (editorSession === session) {
+        text(ui["editor-loading"], error.message);
+        ui["editor-retry"].hidden = false;
+      }
+      return;
+    }
+    if (editorSession !== session || !session.validFor(deviceID(), cards().map((card) => card.id))) return;
+    frame.contentWindow.postMessage(session.initialize(initialImage, `${existing?.name || "card"}.png`), location.origin);
+    ui["editor-loading"].hidden = true;
+    frame.hidden = false;
+  }
+
+  async function receiveArtwork(event) {
+    const session = editorSession;
+    if (!session) return;
+    if (session.isMessage(event, "ready")) { session.resolveReady?.(); return; }
+    const target = session.accept(event, deviceID(), cards().map((card) => card.id));
+    if (!target) return;
+    ui["editor-close"].disabled = true;
+    let applied = false;
+    try {
+      // Check fresh device authority before sending a write from a long-lived editor.
+      if (!await refreshState() || editorSession !== session ||
+          !session.validFor(deviceID(), cards().map((card) => card.id))) return;
+      applied = await uploadImage(new File([target.image], "edited-artwork.png", { type: "image/png" }), target);
+      if (applied && editorSession === session) closeEditor(true);
+    } finally {
+      session.applying = false;
+      ui["editor-close"].disabled = false;
+      if (!applied && editorSession === session) {
+        session.source.postMessage({ channel: "aircard-artwork", type: "error", session: session.session }, session.origin);
+      }
     }
   }
 
@@ -517,6 +605,16 @@
   }
 
   const scan = () => runAction(state?.scanning ? "scan.stop" : "scan.start", { udid: deviceID() });
+  ui["open-editor"].addEventListener("click", () => openEditor(cards().filter((card) => card.selected).map((card) => card.id)));
+  ui["editor-close"].addEventListener("click", () => closeEditor());
+  ui["editor-retry"].addEventListener("click", () => {
+    const session = editorSession;
+    if (!session) return;
+    closeEditor();
+    openEditor(session.ids, session.udid);
+  });
+  ui["editor-dialog"].addEventListener("cancel", (event) => { event.preventDefault(); closeEditor(); });
+  window.addEventListener("message", receiveArtwork);
   ui["scan-toggle"].addEventListener("click", scan);
   ui["empty-scan"].addEventListener("click", scan);
   ui["scan-done"].addEventListener("click", () => runAction("scan.stop", { udid: deviceID() }));

@@ -31,22 +31,21 @@ the device's payment cache again:
   Wallet library. Their presence on the connected iPhone is not assumed.
 
 Neither the scanned count nor cache count is presented as the phone's total.
-Cache contents can be stale or incomplete. The app does not synchronize the
-phone's actual Wallet display order; that original requirement remains deferred
-under the subsequently approved, smaller scope.
+Cache contents can be stale or incomplete. AirCard does not synchronize the
+phone's actual Wallet display order.
 
 ## Checking a missing card
 
-1. Connect, unlock and trust the iPhone, then choose **Scan Cards**.
+1. Connect, unlock and trust the iPhone, then choose **扫描卡片**.
 2. Open each missing card in the iPhone Wallet app. Payment cards can also be
    opened through the side-button Apple Pay interface after authentication.
    Membership cards may need opening directly inside Wallet.
-3. Expand **Check missing cards** to see named cache entries that still need
+3. Expand **识别诊断** to see named cache entries that still need
    scan confirmation. Short ID suffixes distinguish cards with the same name.
-4. If scanning stops unexpectedly, inspect **Log**, use **Reconnect**, then
+4. If scanning stops unexpectedly, inspect **操作日志**, use **重新连接**, then
    start scanning again. The app distinguishes connection failure, scanner
    startup failure, unexpected exit and a scan with no detected IDs.
-5. **Read Cache** rereads local metadata. It does not force an iCloud refresh.
+5. **读取缓存** rereads local metadata. It does not force an iCloud refresh.
    Missing or unreadable metadata leaves scanning available and displays a
    diagnostic instead of declaring that the phone has zero cards.
 

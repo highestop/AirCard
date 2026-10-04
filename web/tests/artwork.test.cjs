@@ -7,8 +7,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
+const { Blob, File } = require('node:buffer');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'artwork.html'), 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script, 'The standalone HTML must contain its inline script');
 
@@ -31,10 +32,12 @@ function bitmap(width = 1536, height = 969) {
   return { width, height, closeCount: 0, close() { this.closeCount++; } };
 }
 
-function harness() {
+function harness({ embedded = false, session = 'fixture-editor-session-1234' } = {}) {
   const elements = new Map();
   const pending = [];
   const canvas = { clearRect() {}, fillRect() {}, drawImage() {} };
+  const messages = [], links = [], revoked = [], handlers = {};
+  const parent = { postMessage(data, origin) { messages.push({ data, origin }); } };
 
   function element(id) {
     if (!elements.has(id)) {
@@ -44,22 +47,27 @@ function harness() {
         classList: { add() {}, remove() {} },
         setAttribute() {},
         addEventListener(name, handler) { this.handlers[name] = handler; },
-        getContext() { return canvas; }
+        getContext() { return canvas; },
+        toBlob(callback, type) { callback(new Blob([PNG_HEADER], { type })); }
       });
     }
     return elements.get(id);
   }
 
+  const window = { addEventListener(name, fn) { handlers[name] = fn; }, location: { origin: 'http://127.0.0.1:8765', search: embedded ? `?session=${session}` : '' } };
+  window.parent = embedded ? parent : window;
   const sandbox = {
     document: {
       getElementById: element,
       querySelectorAll() { return []; },
-      documentElement: {},
+      documentElement: { classList: { add() {} } },
+      body: { appendChild() {} },
+      createElement() { const link = { click() { this.clicked = true; }, remove() {} }; links.push(link); return link; },
       addEventListener() {}
     },
-    window: { addEventListener() {} },
-    URL,
-    setTimeout,
+    window, Blob, File, URLSearchParams,
+    URL: { createObjectURL: () => 'blob:fixture-export', revokeObjectURL: (url) => revoked.push(url) },
+    setTimeout(callback) { callback(); },
     createImageBitmap(input) {
       return new Promise((resolve, reject) => pending.push({ file: input, resolve, reject }));
     }
@@ -83,7 +91,8 @@ function harness() {
     return image;
   }
 
-  return { sandbox, elements, pending, loadFiles, state, startLoad, loadImage, api: sandbox.window.CardArtwork };
+  const receive = (data, overrides = {}) => handlers.message({ data, source: parent, origin: window.location.origin, ...overrides });
+  return { sandbox, elements, pending, loadFiles, state, startLoad, loadImage, messages, links, revoked, receive, session, api: sandbox.window.CardArtwork };
 }
 
 function near(actual, expected) {
@@ -268,4 +277,79 @@ test('switching language preserves framing; reset restores center while keeping 
   assert.equal(h.state.panX, 0.5);
   assert.equal(h.state.panY, 0.5);
   assert.equal(h.state.background, 'white');
+});
+
+test('PNG download exports the current canvas and remains independent of the host', async () => {
+  const h = harness();
+  await h.loadImage(file('family.jpg'));
+  h.state.zoom = 2;
+  await h.elements.get('export-button').handlers.click();
+  assert.match(html, /canvas id="preview" width="1536" height="969"/);
+  assert.equal(h.links[0].download, 'family-aircard-1536x969.png');
+  assert.equal(h.links[0].clicked, true);
+  assert.deepEqual(h.revoked, ['blob:fixture-export']);
+  assert.equal(h.messages.length, 0);
+  assert.equal(h.state.exporting, false);
+});
+
+test('embedded editor accepts only its parent origin and URL session, then loads an existing PNG', async () => {
+  const h = harness({ embedded: true });
+  assert.equal(h.messages[0].data.type, 'ready');
+  assert.equal(h.messages[0].data.session, h.session);
+  const init = { channel: 'aircard-artwork', type: 'init', session: h.session, targetCount: 2,
+    image: new Blob([PNG_HEADER], { type: 'image/png' }), name: 'existing.png' };
+  await h.receive(init, { origin: 'https://other.example' });
+  await h.receive(init, { source: {} });
+  await h.receive({ ...init, session: 'an-old-editor-session' });
+  assert.equal(h.pending.length, 0);
+  assert.equal(h.elements.get('apply-button').hidden, true);
+  const loading = h.receive(init);
+  await tick();
+  h.pending[0].resolve(bitmap());
+  await loading;
+  assert.equal(h.state.fileName, 'existing.png');
+  assert.equal(h.state.zoom, 1);
+  assert.equal(h.state.panX, 0.5);
+  assert.equal(h.state.panY, 0.5);
+  assert.equal(h.elements.get('apply-button').textContent, '应用到 2 张卡片');
+  await h.receive({ ...init, targetCount: 9 });
+  assert.equal(h.elements.get('apply-button').textContent, '应用到 2 张卡片');
+});
+
+test('apply sends a PNG Blob and editor session only, and a host error allows retry', async () => {
+  const h = harness({ embedded: true });
+  await h.receive({ channel: 'aircard-artwork', type: 'init', session: h.session, targetCount: 1 });
+  await h.loadImage();
+  await h.elements.get('apply-button').handlers.click();
+  const { data, origin } = h.messages.at(-1);
+  assert.deepEqual(Object.keys(data).sort(), ['channel', 'image', 'session', 'type']);
+  assert.equal(data.type, 'apply');
+  assert.equal(data.image.type, 'image/png');
+  assert.equal(origin, 'http://127.0.0.1:8765');
+  assert.equal(h.state.exporting, true);
+  await h.elements.get('apply-button').handlers.click();
+  assert.equal(h.messages.length, 2, 'A pending apply cannot be sent twice');
+  await h.receive({ channel: 'aircard-artwork', type: 'error', session: h.session });
+  assert.equal(h.state.exporting, false);
+  assert.equal(h.elements.get('apply-button').disabled, false);
+});
+
+test('no selected card keeps download available and never emits apply', async () => {
+  const h = harness({ embedded: true });
+  await h.receive({ channel: 'aircard-artwork', type: 'init', session: h.session, targetCount: 0 });
+  await h.loadImage();
+  assert.equal(h.elements.get('apply-button').disabled, true);
+  assert.equal(h.elements.get('export-button').disabled, false);
+  await h.elements.get('apply-button').handlers.click();
+  assert.equal(h.messages.length, 1);
+});
+
+test('failed PNG export reports the error and unlocks the editor', async () => {
+  const h = harness();
+  await h.loadImage();
+  h.elements.get('preview').toBlob = (callback) => callback(null);
+  await h.elements.get('export-button').handlers.click();
+  assert.equal(h.state.error.key, 'exportError');
+  assert.equal(h.state.exporting, false);
+  assert.equal(h.elements.get('export-button').disabled, false);
 });

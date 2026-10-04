@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>AirCard · 离线卡面制作</title>
+  <title>AirCard · 卡面编辑器</title>
   <style>
     :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #192539; background: #f4f6fa; font-synthesis: none; }
     * { box-sizing: border-box; }
@@ -64,6 +64,11 @@
     .export-meta strong { color: #253957; font-size: 12px; font-variant-numeric: tabular-nums; }
     #export-button { width: 100%; background: #365edc; color: white; border-color: #365edc; padding: 13px; font-size: 14px; }
     #export-button:hover:enabled { background: #284fc7; border-color: #284fc7; }
+    #apply-button { width: 100%; margin-bottom: 10px; background: #365edc; color: white; border-color: #365edc; }
+    .embedded .brand, .embedded main > .eyebrow, .embedded main > h1, .embedded main > .intro, .embedded .details, .embedded footer, .embedded [data-i18n="downloadNote"] { display: none; }
+    .embedded .header-row { min-height: 46px; justify-content: flex-end; }
+    .embedded main { padding-top: 18px; }
+    .embedded #export-button { background: white; color: #365edc; }
     .notice { font-size: 12px; line-height: 1.7; padding: 10px 12px; border-radius: 8px; margin: 14px 0 0; }
     #resolution-warning { color: #805b0e; background: #fff7e4; border: 1px solid #f5e5be; }
     #error { color: #9c3037; background: #fff0f1; border: 1px solid #f2d1d4; }
@@ -79,7 +84,7 @@
 </head>
 <body>
   <header><div class="shell header-row">
-    <div class="brand"><span class="brand-icon" aria-hidden="true"></span><div>AirCard Guide<small data-i18n="brandSub">卡面工作台</small></div></div>
+    <div class="brand"><span class="brand-icon" aria-hidden="true"></span><div>AirCard<small data-i18n="brandSub">卡面工作台</small></div></div>
     <button id="language-toggle" type="button" lang="en" aria-label="Switch to English">English</button>
   </div></header>
   <main class="shell">
@@ -114,7 +119,7 @@
           <div class="control"><div class="label-row"><label for="position-y" data-i18n="positionY">垂直取景</label><output id="position-y-value" for="position-y">50%</output></div><input id="position-y" type="range" min="0" max="100" step="0.1" value="50" disabled><div class="range-ends"><span data-i18n="top">原图上方</span><span data-i18n="bottom">原图下方</span></div><p class="small-note" data-i18n="positionNote">某一方向已完整显示时，该方向的滑杆不可用。放大后可继续调整。</p></div>
           <div class="control"><div class="label-row"><label for="background" data-i18n="background">透明区域处理</label></div><select id="background" disabled><option value="transparent" data-i18n="transparent">保留透明通道</option><option value="white" data-i18n="white">填充白色背景</option><option value="black" data-i18n="black">填充黑色背景</option></select><p class="small-note" data-i18n="alphaNote">默认保留原图透明度；手机上的透明区域显示可能不同。</p></div>
           <button id="reset-button" type="button" disabled data-i18n="reset">重置缩放与居中构图</button>
-          <div class="export"><div class="export-meta"><span data-i18n="exportSize">导出尺寸</span><strong>1536 × 969 px · PNG</strong></div><button id="export-button" type="button" disabled data-i18n="download">下载卡面 PNG</button><p class="small-note" data-i18n="downloadNote">导出后在 AirCard 中选择此 PNG，再预览和应用。</p></div>
+          <div class="export"><div class="export-meta"><span data-i18n="exportSize">导出尺寸</span><strong>1536 × 969 px · PNG</strong></div><button id="apply-button" type="button" disabled hidden>应用到卡片</button><button id="export-button" type="button" disabled data-i18n="download">下载卡面 PNG</button><p id="apply-note" class="small-note" hidden></p><p class="small-note" data-i18n="downloadNote">导出后在 AirCard 中选择此 PNG，再预览和应用。</p></div>
         </div>
       </section>
     </div>
@@ -122,7 +127,7 @@
       <div><h3 data-i18n="privacyTitle">本地处理，文件由你保管</h3><p data-i18n="privacyText">无需账号、联网或安装依赖。不会上传图片、保存操作历史或连接手机。关闭页面后，未导出的构图不会保留。</p></div>
       <div><h3 data-i18n="displayTitle">关于实际显示效果</h3><p data-i18n="displayText">初始构图采用 AirCard 的等比填满与居中裁切规则。此预览仅展示图片范围，不模拟 Wallet 的圆角、文字与标志叠加；浏览器与手机的色彩和缩放也可能不同。</p></div>
     </section>
-    <footer data-i18n="footer">本工具仅制作图片，安装、连接及应用卡面仍由 AirCard 完成。</footer>
+    <footer data-i18n="footer">本工具制作卡面图片，设备连接与卡面同步由 AirCard 主页面完成。</footer>
   </main>
   <noscript><p style="margin:24px">此离线工具需要启用 JavaScript。This offline tool requires JavaScript.</p></noscript>
   <script>
@@ -131,7 +136,7 @@
     const LIMITS = Object.freeze({ bytes: 30 * 1024 * 1024, pixels: 48000000, edge: 16384 });
     const STRINGS = {
       zh: {
-        pageTitle: 'AirCard · 离线卡面制作', brandSub: '卡面工作台', badge: '离线工具 · 图片仅在本机处理', title: '让卡面，刚好合适。',
+        pageTitle: 'AirCard · 卡面编辑器', brandSub: '卡面工作台', badge: '离线工具 · 图片仅在本机处理', title: '让卡面，刚好合适。',
         intro: '选一张图片，调整构图，导出 1536 × 969 PNG。下载本 HTML 后即可离线使用，再将制作好的卡面导入 AirCard。',
         previewHeading: '选择图片与预览裁切', emptyTitle: '将图片拖到这里', emptyText: '或点击下方按钮，从设备中选择图片', choose: '选择图片',
         fileLimits: 'PNG / JPEG / WebP · 最多 30 MiB · 不超过 48 MP，单边不超过 16,384 px',
@@ -141,17 +146,18 @@
         alphaNote: '默认保留原图透明度；手机上的透明区域显示可能不同。', reset: '重置缩放与居中构图', exportSize: '导出尺寸', download: '下载卡面 PNG', downloadNote: '导出后在 AirCard 中选择此 PNG，再预览和应用。',
         privacyTitle: '本地处理，文件由你保管', privacyText: '无需账号、联网或安装依赖。不会上传图片、保存操作历史或连接手机。关闭页面后，未导出的构图不会保留。',
         displayTitle: '关于实际显示效果', displayText: '初始构图采用 AirCard 的等比填满与居中裁切规则。此预览仅展示图片范围，不模拟 Wallet 的圆角、文字与标志叠加；浏览器与手机的色彩和缩放也可能不同。',
-        footer: '本工具仅制作图片，安装、连接及应用卡面仍由 AirCard 完成。',
+        footer: '本工具制作卡面图片，设备连接与卡面同步由 AirCard 主页面完成。',
         canvasLabel: '卡面裁切预览；可拖动图片、使用方向键，或使用定位滑杆', fileLabel: '选择 PNG、JPEG 或 WebP 图片',
         sourceInfo: '原图：{width} × {height} px · {size} MiB', cropInfo: '当前使用约 {width} × {height} px 的原图区域',
         upscale: '分辨率提示：当前裁切区域需要放大至 {percent}%，导出可能变模糊。可减小缩放或使用更高分辨率的原图。',
         loading: '正在本机读取图片…', loaded: '图片已载入。调整好构图后即可下载。', resetDone: '已恢复等比填满与居中构图。', exporting: '正在生成 PNG…', exported: '已触发 PNG 下载；若浏览器询问，请选择保存位置。',
+        apply: '应用到 {count} 张卡片', applying: '正在设置本地卡面…', loadedEmbedded: '图片已载入。调整构图后，可应用到目标卡片或下载 PNG。', applyNote: '设置本地图片后，还需要在主页面点击「写入卡面」。', downloadOnly: '本次未选择卡片，只能下载 PNG。', applyError: '设置图片未完成，请检查主页面提示后重试。',
         oneFile: '请一次选择或拖入一张图片。', fileTooLarge: '图片文件超过 30 MiB，请先缩小文件后再试。', unsupported: '请选择 PNG、JPEG 或 WebP 图片。SVG、HEIC、GIF 和其他文件不支持，请先转换格式。',
         dimensions: '图片尺寸超过限制：最多 48 MP，单边不超过 16,384 px。请先缩小图片。', decodeError: '无法读取这张图片；文件可能损坏或浏览器不支持其编码。请转换为普通 PNG 或 JPEG 后重试。',
         canvasError: '浏览器无法创建绘图画布，请尝试更新浏览器。', exportError: 'PNG 导出失败，可能是浏览器内存不足。请使用更小的原图后重试。', previousKept: '原先载入的图片保持不变。'
       },
       en: {
-        pageTitle: 'AirCard · Offline Artwork Studio', brandSub: 'ARTWORK STUDIO', badge: 'Offline tool · Images stay on your device', title: 'Find the right frame.',
+        pageTitle: 'AirCard · Artwork Editor', brandSub: 'ARTWORK STUDIO', badge: 'Offline tool · Images stay on your device', title: 'Find the right frame.',
         intro: 'Choose an image, adjust the crop, and export a 1536 × 969 PNG. Download this HTML file to work offline, then import your finished artwork into AirCard.',
         previewHeading: 'Choose an image & preview the crop', emptyTitle: 'Drop an image here', emptyText: 'Or use the button below to choose a file from your device', choose: 'Choose image',
         fileLimits: 'PNG / JPEG / WebP · Up to 30 MiB · Up to 48 MP, with each side no larger than 16,384 px',
@@ -161,23 +167,26 @@
         alphaNote: 'Source transparency is preserved by default; transparent areas may look different on the phone.', reset: 'Reset zoom & center crop', exportSize: 'Export size', download: 'Download artwork PNG', downloadNote: 'Select this PNG in AirCard, then preview and apply it.',
         privacyTitle: 'Local processing. Your files stay yours.', privacyText: 'No account, connection, or dependencies required. Images are never uploaded. This page does not keep an editing history or connect to your phone. Export before closing to keep your work.',
         displayTitle: 'What to expect on your phone', displayText: 'The initial composition uses AirCard’s scale-to-fill and center-crop geometry. This preview only shows the image area, without Wallet’s rounded corners, text, or logos. Browser and phone colors and scaling may also differ.',
-        footer: 'This tool only prepares images. Use AirCard to install, connect, and apply artwork.',
+        footer: 'This editor prepares artwork. Connect and sync your phone from the AirCard main page.',
         canvasLabel: 'Card artwork crop preview; drag, use arrow keys, or adjust the position sliders', fileLabel: 'Choose a PNG, JPEG, or WebP image',
         sourceInfo: 'Source: {width} × {height} px · {size} MiB', cropInfo: 'Using approximately {width} × {height} px of the source image',
         upscale: 'Resolution notice: this crop is enlarged to {percent}%, which may soften the result. Reduce zoom or use a higher-resolution source.',
         loading: 'Reading the image locally…', loaded: 'Image loaded. Adjust the composition, then download.', resetDone: 'Restored scale-to-fill and center crop.', exporting: 'Generating PNG…', exported: 'PNG download requested. Choose a save location if your browser asks.',
+        apply: 'Apply to {count} cards', applying: 'Saving local artwork…', loadedEmbedded: 'Image loaded. Adjust the composition, then apply it to the target cards or download PNG.', applyNote: 'After setting the local image, use Write artwork on the main page to sync it.', downloadOnly: 'No target cards were selected. Download PNG is available.', applyError: 'The image was not applied. Check the main page and try again.',
         oneFile: 'Please choose or drop one image at a time.', fileTooLarge: 'The file exceeds 30 MiB. Please reduce its size first.', unsupported: 'Choose a PNG, JPEG, or WebP image. SVG, HEIC, GIF, and other file types are not supported; convert them first.',
         dimensions: 'Image dimensions exceed the limit: up to 48 MP and no more than 16,384 px on either side. Please resize it first.', decodeError: 'This image could not be read. It may be damaged or use an unsupported encoding. Convert it to a standard PNG or JPEG and try again.',
         canvasError: 'The browser could not create a drawing canvas. Please try an updated browser.', exportError: 'PNG export failed, possibly because the browser ran out of memory. Try a smaller source image.', previousKept: 'Your previously loaded image is unchanged.'
       }
     };
     const byId = id => document.getElementById(id);
-    const ui = Object.fromEntries(['file-input', 'choose-button', 'drop-zone', 'empty-state', 'canvas-wrap', 'preview', 'file-info', 'source-name', 'source-info', 'crop-info', 'resolution-warning', 'status', 'error', 'zoom', 'zoom-value', 'position-x', 'position-y', 'position-x-value', 'position-y-value', 'background', 'reset-button', 'export-button', 'language-toggle'].map(id => [id, byId(id)]));
+    const ui = Object.fromEntries(['file-input', 'choose-button', 'drop-zone', 'empty-state', 'canvas-wrap', 'preview', 'file-info', 'source-name', 'source-info', 'crop-info', 'resolution-warning', 'status', 'error', 'zoom', 'zoom-value', 'position-x', 'position-y', 'position-x-value', 'position-y-value', 'background', 'reset-button', 'export-button', 'language-toggle', 'apply-button', 'apply-note'].map(id => [id, byId(id)]));
     const context = ui.preview.getContext('2d');
     const state = { lang: 'zh', image: null, width: 0, height: 0, fileName: '', bytes: 0, zoom: 1, panX: .5, panY: .5, background: 'transparent', busy: false, exporting: false, generation: 0, feedback: null, error: null, drag: null };
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+    let host = null;
+    const expectedSession = new URLSearchParams(window.location.search).get('session');
 
-    // Scale-to-fill matches AppViewModel.prepareCardImage at zoom=1 and pan=.5.
+    // Scale-to-fill matches image_processing.prepare_image at zoom=1 and pan=.5.
     // pan=0 selects the source's left/top edge; pan=1 selects its right/bottom edge.
     function cropGeometry(width, height, zoom = 1, panX = .5, panY = .5) {
       if (![width, height, zoom, panX, panY].every(Number.isFinite) || width <= 0 || height <= 0 || zoom < 1) throw new RangeError('Invalid crop geometry');
@@ -208,7 +217,7 @@
     function feedback(key) { state.feedback = key; state.error = null; renderMessages(); }
     function fail(key) { state.feedback = null; state.error = { key, retained: Boolean(state.image) }; renderMessages(); }
     function renderMessages() {
-      ui.status.textContent = state.feedback ? t(state.feedback) : '';
+      ui.status.textContent = state.feedback ? t(state.feedback === 'loaded' && host?.targetCount ? 'loadedEmbedded' : state.feedback) : '';
       ui.error.hidden = !state.error;
       ui.error.textContent = state.error ? t(state.error.key) + (state.error.retained ? ' ' + t('previousKept') : '') : '';
     }
@@ -226,6 +235,11 @@
       ui.background.disabled = locked;
       ui['reset-button'].disabled = locked;
       ui['export-button'].disabled = locked;
+      ui['apply-button'].hidden = !host;
+      ui['apply-button'].disabled = locked || !host?.targetCount;
+      ui['apply-button'].textContent = t('apply', { count: host?.targetCount || 0 });
+      ui['apply-note'].hidden = !host;
+      ui['apply-note'].textContent = host ? t(host.targetCount ? 'applyNote' : 'downloadOnly') : '';
       ui['choose-button'].disabled = state.exporting || !context;
       ui['file-input'].disabled = state.exporting || !context;
       ui.zoom.value = state.zoom;
@@ -362,13 +376,52 @@
       if (geometry.overflowY > .001 && event.key === 'ArrowDown') state.panY = clamp(state.panY + delta, 0, 1);
       render();
     });
+    const exportPNG = () => new Promise((resolve, reject) => ui.preview.toBlob(
+      result => result ? resolve(result) : reject(new Error('exportError')), 'image/png'));
+
+    window.addEventListener('message', async (event) => {
+      // Standalone file pages never accept a host. Only the containing local
+      // page can create one editor session; the service token stays outside it.
+      if (window.parent === window || window.location.origin === 'null' ||
+          event.source !== window.parent || event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || data.channel !== 'aircard-artwork' || data.session !== expectedSession) return;
+      if (data.type === 'error' && host?.session === data.session) {
+        state.exporting = false;
+        fail('applyError');
+        render();
+        return;
+      }
+      if (data.type !== 'init' || host || !/^[a-zA-Z0-9-]{16,80}$/.test(data.session) ||
+          !Number.isInteger(data.targetCount) || data.targetCount < 0 || data.targetCount > 256) return;
+      host = { session: data.session, targetCount: data.targetCount, source: event.source, origin: event.origin };
+      document.documentElement.classList.add('embedded');
+      render();
+      if (data.image instanceof Blob) await loadFiles([new File([data.image], String(data.name || 'artwork.png'), { type: data.image.type })]);
+    });
+
+    ui['apply-button'].addEventListener('click', async () => {
+      if (!host?.targetCount || !state.image || state.busy || state.exporting) return;
+      state.exporting = true;
+      feedback('applying');
+      render();
+      try {
+        const image = await exportPNG();
+        host.source.postMessage({ channel: 'aircard-artwork', type: 'apply', session: host.session, image }, host.origin);
+      } catch (_) {
+        state.exporting = false;
+        fail('exportError');
+        render();
+      }
+    });
+
     ui['export-button'].addEventListener('click', async () => {
       if (!state.image || state.busy || state.exporting) return;
       state.exporting = true;
       feedback('exporting');
       render();
       try {
-        const blob = await new Promise((resolve, reject) => ui.preview.toBlob(result => result ? resolve(result) : reject(new Error('exportError')), 'image/png'));
+        const blob = await exportPNG();
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -387,6 +440,9 @@
     window.CardArtwork = Object.freeze({ OUTPUT, LIMITS, cropGeometry, safeFileName, supportedSignature });
     setLanguage('zh');
     if (!context) fail('canvasError');
+    if (window.parent !== window && window.location.origin !== 'null' && /^[a-zA-Z0-9-]{16,80}$/.test(expectedSession || '')) {
+      window.parent.postMessage({ channel: 'aircard-artwork', type: 'ready', session: expectedSession }, window.location.origin);
+    }
   </script>
 </body>
 </html>

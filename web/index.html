@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light dark">
   <title>AirCard · Wallet 卡面</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/artwork-bridge.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -19,7 +20,6 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 14h12l1-14M10 10v6M14 10v6"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M11 18h2"/></symbol>
   </svg>
 
@@ -51,7 +51,7 @@
 
     <section class="page-heading" aria-labelledby="page-title">
       <div><p class="eyebrow">YOUR WALLET, YOUR WAY</p><h1 id="page-title">给卡片换个新面貌</h1><p class="page-description">识别 iPhone 上的卡片，选择喜欢的图片，写入 Wallet。</p></div>
-      <a class="editor-link" href="/artwork/" target="_blank" rel="noopener">打开卡面编辑器 <span aria-hidden="true">↗</span></a>
+      <button id="open-editor" class="editor-link text-button" type="button">编辑选中卡片的构图</button>
     </section>
 
     <section class="wallet-panel" aria-label="卡片管理">
@@ -118,6 +118,14 @@
   <input id="image-picker" type="file" accept="image/*,.heic,.heif" hidden>
   <div id="toast" class="toast" role="status" hidden></div>
 
+  <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title">
+    <div class="editor-dialog-heading"><div><h2 id="editor-title">卡面编辑器</h2><p id="editor-targets"></p></div><button id="editor-close" class="icon-button" type="button" aria-label="关闭卡面编辑器"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <p id="editor-loading" class="editor-loading" role="status">正在打开编辑器…</p>
+    <button id="editor-retry" class="button secondary editor-retry" type="button" hidden>重新打开编辑器</button>
+    <iframe id="editor-frame" title="卡面裁切和导出" hidden></iframe>
+    <p class="editor-dialog-note">应用只设置本地卡面图片；关闭编辑器后，检查预览并点击「写入卡面」同步到 iPhone。</p>
+  </dialog>
+
   <template id="card-template">
     <article class="wallet-card">
       <div class="artwork-zone">
@@ -129,7 +137,7 @@
         <button class="clear-image icon-button" type="button" title="移除本地图片" aria-label="移除本地图片" hidden><svg class="icon"><use href="#i-close"/></svg></button>
         <span class="drop-overlay" aria-hidden="true">松开以设置卡面</span>
       </div>
-      <div class="card-description"><h3 class="card-name"></h3><p class="card-verification">本次扫描已确认</p><p class="image-warning" hidden>图片文件不可用，请重新选择。</p></div>
+      <div class="card-description"><h3 class="card-name"></h3><p class="card-verification">本次扫描已确认</p><p class="image-warning" hidden>图片文件不可用，请重新选择。</p><button class="edit-artwork text-button" type="button">编辑构图</button></div>
       <div class="card-controls"><label class="card-selection"><input class="card-checkbox" type="checkbox"><span class="card-index"></span></label><button class="copy-id" type="button" title="复制完整卡片 ID"><span class="short-id"></span><svg class="icon"><use href="#i-copy"/></svg></button><span class="card-status" title="根据本地成功写入记录判断"></span><button class="delete-card icon-button" type="button" title="移除本地卡片记录" aria-label="移除本地卡片记录"><svg class="icon"><use href="#i-trash"/></svg></button></div>
     </article>
   </template>
