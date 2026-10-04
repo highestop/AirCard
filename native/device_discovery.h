@@ -42,6 +42,16 @@ static inline BOOL WalletDeviceUsesUSB(unsigned int interfaceType) {
     return interfaceType == 1;
 }
 
+// usbmuxd and MobileDevice can report the same UDID with different casing.
+// Match the requested identity without changing persisted IDs or accepting a
+// network connection for a USB-only operation.
+static inline BOOL WalletDeviceMatchesTarget(unsigned int interfaceType,
+                                             NSString *identifier,
+                                             NSString *target) {
+    return WalletDeviceUsesUSB(interfaceType) && identifier.length && target.length &&
+        [identifier caseInsensitiveCompare:target] == NSOrderedSame;
+}
+
 static inline NSString *WalletDeviceSessionState(BOOL connected, int paired,
                                                 int validation, int session) {
     if (!connected) return @"unavailable";
