@@ -15,77 +15,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from apply_card_skin import (
-    native,
-    operation_ok,
     write_file,
     write_files_batch,
     remove_files,
 )
 from card_assets import CACHE_FILES, build_card_assets
-from aircard import find_device_helper, get_all_connected_devices
-from image_processing import prepare_image
 from wallet_discovery import valid_card_id
-
-
-def cmd_devices(target_udid: str | None = None):
-    if not find_device_helper():
-        print(json.dumps({"connected": False, "error": "device_helper_missing", "devices": []}))
-        return
-    devices = get_all_connected_devices()
-    if not devices:
-        print(json.dumps({"connected": False, "error": "no_device", "devices": []}))
-        return
-
-    active_device = None
-    if target_udid:
-        for d in devices:
-            if d["udid"] == target_udid:
-                active_device = dict(d)
-                break
-    if target_udid and not active_device:
-        print(json.dumps({
-            "connected": False,
-            "error": "selected_device_missing",
-            "devices": devices,
-            "selected_udid": target_udid,
-        }))
-        return
-    if not active_device:
-        paired = [d for d in devices if d.get("product")]
-        active_device = dict(paired[0] if paired else devices[0])
-
-    if active_device.get("product"):
-        try:
-            probe = native("probe", active_device["udid"])
-            active_device["airlift_compatible"] = operation_ok(probe)
-        except Exception:
-            active_device["airlift_compatible"] = False
-    else:
-        active_device["airlift_compatible"] = False
-    active_device["connected"] = True
-
-    for d in devices:
-        if d["udid"] == active_device["udid"]:
-            d["airlift_compatible"] = active_device.get("airlift_compatible")
-
-    print(json.dumps({
-        "connected": True,
-        "devices": devices,
-        "selected_udid": active_device["udid"],
-        "device": active_device,
-    }))
-
-
-def cmd_prepare_image(src: str, dst: str) -> bool:
-    try:
-        path = Path(src).expanduser()
-        data = prepare_image(path.read_bytes())
-        Path(dst).expanduser().write_bytes(data)
-    except (OSError, ValueError) as error:
-        print(json.dumps({"ok": False, "error": str(error)}))
-        return False
-    print(json.dumps({"ok": True, "path": dst}))
-    return True
 
 
 @contextmanager
@@ -254,13 +189,7 @@ def main():
 
     cmd = sys.argv[1]
     norm_cmd = cmd.lstrip("-")
-    if norm_cmd == "devices":
-        target = sys.argv[2] if len(sys.argv) > 2 else None
-        cmd_devices(target)
-    elif norm_cmd == "prepare-image" and len(sys.argv) > 3:
-        if not cmd_prepare_image(sys.argv[2], sys.argv[3]):
-            sys.exit(1)
-    elif norm_cmd == "flash" and len(sys.argv) > 4:
+    if norm_cmd == "flash" and len(sys.argv) > 4:
         if not cmd_flash(sys.argv[2], sys.argv[3], sys.argv[4]):
             sys.exit(1)
     else:

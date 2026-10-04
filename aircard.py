@@ -60,7 +60,7 @@ def format_device(device: dict) -> dict:
 
 
 def get_all_connected_devices() -> list[dict]:
-    """Returns all enumerated devices formatted for UI/CLI consumption."""
+    """Returns all enumerated devices formatted for the browser service."""
     raw = [d for d in list_devices() if d.get("udid")]
     if not raw:
         return []
@@ -71,20 +71,6 @@ def get_all_connected_devices() -> list[dict]:
 
     sorted_raw = iphones + other_paired + unpaired
     return [format_device(d) for d in sorted_raw]
-
-
-def get_connected_device(target_udid: str | None = None) -> dict | None:
-    """Picks the connected device (by UDID if given, or the best available device)."""
-    devices = get_all_connected_devices()
-    if not devices:
-        return None
-    if target_udid:
-        for d in devices:
-            if d["udid"] == target_udid:
-                return d
-        return None
-    paired = [d for d in devices if d.get("product")]
-    return paired[0] if paired else devices[0]
 
 
 def main():
