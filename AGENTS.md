@@ -5,7 +5,7 @@
 - Write all repository documentation in English, including the README, files under `docs/`, and agent instructions. Translate documentation imported from upstream into English before including it.
 - Use English for new or updated code comments, docstrings, commit messages, and pull request titles and descriptions.
 - Preserve command syntax, paths, API identifiers, saved-data compatibility keys, exact diagnostic strings, and required legal notices when translating prose.
-- Localized interface strings and multilingual test fixtures may retain their intended languages. Documentation updates do not change the interface language unless the user requests that change.
+- Keep the main interface and artwork editor in Simplified Chinese only. Do not add language selectors or locale-switching infrastructure unless explicitly requested. Repository documentation remains in English; multilingual test fixtures may retain the text needed for their tests.
 - Reply to the user in their preferred language; the repository's English documentation policy does not require English conversation.
 
 ## Personal fork policy

@@ -1,7 +1,8 @@
 # Card artwork editor
 
 The card artwork editor is part of the main web interface. Images are processed
-locally in the browser using Canvas.
+locally in the browser using Canvas. The editor uses Simplified Chinese,
+matching the main interface, and has no language switcher.
 
 ## Usage
 
