@@ -9,9 +9,9 @@ cards. Comparing both log services during the same interaction showed that
 included them in multiline resource lookup messages.
 
 The native helper now requests the unified activity stream and decodes its
-framed records through the MobileDevice service connection. This keeps the app
-self-contained. Existing card filters still identify the `.pkpass` paths.
-The app also displays helper diagnostics and resets its scanning state if the
+framed records through the MobileDevice service connection. The local Python
+service consumes this stream and identifies the `.pkpass` paths.
+The browser UI also displays helper diagnostics and resets its scanning state if the
 reader exits unexpectedly.
 
 ## Verified environment
@@ -37,7 +37,7 @@ combinations still need verification.
 
 ```sh
 python3 -m unittest discover -s tests -v
-bash build.sh
+make all
 ```
 
 Scanner tests cover fragmented and coalesced frames, the different byte orders

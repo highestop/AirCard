@@ -39,7 +39,7 @@ requested again.
 
 With the change `device_helper list` returned the device with a live lockdown
 session (`product`, `version`, `name`), and
-`aircard_backend.py --device` reported `"connected": true` with
+`aircard_backend.py --devices` reports the active device as `"connected": true` with
 `"airlift_compatible": true`. `device_helper syslog <udid>` reached
 `Connected to the unified device log stream`, so the scanner path is restored
 too.
@@ -53,5 +53,5 @@ troubleshooting.
 
 ```sh
 python3 -m unittest discover -s tests -v
-bash build.sh
+make all
 ```

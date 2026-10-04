@@ -1,39 +1,18 @@
 #!/usr/bin/env python3
 """
-Backend engine for AirCard native macOS GUI app.
+JSON command backend for AirCard's local browser service.
 """
 from __future__ import annotations
 
+import fcntl
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
-
-# Augment PATH so bundled tools and system tools are always found
-script_dir = Path(__file__).resolve().parent
-bundled_bin = script_dir / "bin"
-bundled_lib = script_dir / "lib"
-app_bin = Path("/Applications/AirCard.app/Contents/Resources/bin")
-app_lib = Path("/Applications/AirCard.app/Contents/Resources/lib")
-
-paths_to_add = [
-    str(bundled_bin),
-    str(app_bin),
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-    "/usr/bin",
-    "/bin"
-]
-for p in reversed(paths_to_add):
-    if os.path.isdir(p) and p not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = f"{p}:{os.environ.get('PATH', '')}"
-
-lib_paths = [str(bundled_lib), str(app_lib)]
-for lp in lib_paths:
-    if os.path.isdir(lp):
-        cur_dyld = os.environ.get("DYLD_LIBRARY_PATH", "")
-        os.environ["DYLD_LIBRARY_PATH"] = f"{lp}:{cur_dyld}" if cur_dyld else lp
 
 from apply_card_skin import (
     native,
@@ -43,33 +22,9 @@ from apply_card_skin import (
     remove_files,
 )
 from card_assets import CACHE_FILES, build_card_assets
-from aircard import (
-    find_device_helper,
-    get_connected_device,
-    get_all_connected_devices,
-    load_saved_cards,
-    save_cards,
-)
-
-
-def cmd_device(target_udid: str | None = None):
-    if not find_device_helper():
-        print(json.dumps({"connected": False, "error": "device_helper_missing"}))
-        return
-    device = get_connected_device(target_udid)
-    if not device:
-        print(json.dumps({"connected": False, "error": "no_device"}))
-        return
-    if device.get("product"):
-        try:
-            probe = native("probe", device["udid"])
-            device["airlift_compatible"] = operation_ok(probe)
-        except Exception:
-            device["airlift_compatible"] = False
-    else:
-        device["airlift_compatible"] = False
-    device["connected"] = True
-    print(json.dumps(device))
+from aircard import find_device_helper, get_all_connected_devices
+from image_processing import prepare_image
+from wallet_discovery import valid_card_id
 
 
 def cmd_devices(target_udid: str | None = None):
@@ -87,6 +42,14 @@ def cmd_devices(target_udid: str | None = None):
             if d["udid"] == target_udid:
                 active_device = dict(d)
                 break
+    if target_udid and not active_device:
+        print(json.dumps({
+            "connected": False,
+            "error": "selected_device_missing",
+            "devices": devices,
+            "selected_udid": target_udid,
+        }))
+        return
     if not active_device:
         paired = [d for d in devices if d.get("product")]
         active_device = dict(paired[0] if paired else devices[0])
@@ -113,59 +76,54 @@ def cmd_devices(target_udid: str | None = None):
     }))
 
 
-def cmd_get_saved_cards():
-    cards = load_saved_cards()
-    print(json.dumps({"ok": True, "cards": cards}))
-
-
-def cmd_save_cards(cards_json: str):
+def cmd_prepare_image(src: str, dst: str) -> bool:
     try:
-        cards = json.loads(cards_json)
-        if isinstance(cards, list):
-            save_cards(cards)
-            print(json.dumps({"ok": True}))
-            return
-    except Exception as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return
-    print(json.dumps({"ok": False, "error": "Invalid format"}))
+        path = Path(src).expanduser()
+        data = prepare_image(path.read_bytes())
+        Path(dst).expanduser().write_bytes(data)
+    except (OSError, ValueError) as error:
+        print(json.dumps({"ok": False, "error": str(error)}))
+        return False
+    print(json.dumps({"ok": True, "path": dst}))
+    return True
 
 
-def cmd_prepare_image(src: str, dst: str):
-    path = Path(src).expanduser()
-    if not path.is_file():
-        print(json.dumps({"ok": False, "error": f"File not found: {src}"}))
-        return
+@contextmanager
+def _device_write_lock(udid: str):
+    # Independent of the server's data directory: two browser instances or a
+    # direct backend invocation must never share the phone's Books staging area.
+    directory = Path("/tmp") / f"aircard-device-locks-{os.getuid()}"
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    name = hashlib.sha256(udid.lower().encode("utf-8")).hexdigest() + ".lock"
+    descriptor = os.open(directory / name, os.O_CREAT | os.O_RDWR, 0o600)
     try:
-        from PIL import Image, ImageOps
-        with Image.open(path) as img:
-            img = img.convert("RGBA")
-            target_size = (1536, 969)
-            fitted = ImageOps.fit(img, target_size, method=Image.Resampling.LANCZOS)
-            fitted.save(dst, format="PNG")
-        print(json.dumps({"ok": True, "path": dst}))
-        return
-    except ImportError:
-        pass
-    except Exception as e:
-        pass
-    
-    # Fallback to macOS built-in sips tool (built into every macOS, 0 dependencies!)
-    try:
-        import subprocess
-        subprocess.check_call([
-            "/usr/bin/sips",
-            "-s", "format", "png",
-            "-z", "969", "1536",
-            str(path),
-            "--out", str(dst)
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(json.dumps({"ok": True, "path": dst}))
-    except Exception as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+    finally:
+        os.close(descriptor)
 
 
 def cmd_flash(udid: str, card_hash: str, image_path: str) -> bool:
+    if not isinstance(udid, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}", udid) is None:
+        print(json.dumps({"type": "error", "message": "Invalid device identifier."}), flush=True)
+        return False
+    if not valid_card_id(card_hash):
+        print(json.dumps({"type": "error", "message": "Invalid Wallet card identifier."}), flush=True)
+        return False
+    try:
+        with _device_write_lock(udid):
+            return _flash_unlocked(udid, card_hash, image_path)
+    except BlockingIOError:
+        print(json.dumps({"type": "error", "card": card_hash,
+                          "message": "Another AirCard process is writing this iPhone. Wait for it to finish."}), flush=True)
+        return False
+    except OSError:
+        print(json.dumps({"type": "error", "card": card_hash,
+                          "message": "Could not access the device write lock or artwork file."}), flush=True)
+        return False
+
+
+def _flash_unlocked(udid: str, card_hash: str, image_path: str) -> bool:
     img_path = Path(image_path)
     if not img_path.is_file():
         print(json.dumps({"ok": False, "error": "Image file not found"}))
@@ -296,18 +254,12 @@ def main():
 
     cmd = sys.argv[1]
     norm_cmd = cmd.lstrip("-")
-    if norm_cmd == "device":
-        target = sys.argv[2] if len(sys.argv) > 2 else None
-        cmd_device(target)
-    elif norm_cmd == "devices":
+    if norm_cmd == "devices":
         target = sys.argv[2] if len(sys.argv) > 2 else None
         cmd_devices(target)
-    elif norm_cmd == "cards":
-        cmd_get_saved_cards()
-    elif norm_cmd == "save-cards" and len(sys.argv) > 2:
-        cmd_save_cards(sys.argv[2])
     elif norm_cmd == "prepare-image" and len(sys.argv) > 3:
-        cmd_prepare_image(sys.argv[2], sys.argv[3])
+        if not cmd_prepare_image(sys.argv[2], sys.argv[3]):
+            sys.exit(1)
     elif norm_cmd == "flash" and len(sys.argv) > 4:
         if not cmd_flash(sys.argv[2], sys.argv[3], sys.argv[4]):
             sys.exit(1)

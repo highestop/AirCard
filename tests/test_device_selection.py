@@ -73,6 +73,26 @@ class DeviceSelectionTests(unittest.TestCase):
         self.assertEqual(ipad_dev["name"], "User's iPad")
 
     @patch("aircard.list_devices", return_value=MOCK_RAW_DEVICES)
+    def test_missing_explicit_device_does_not_select_another_phone(self, mock_list):
+        self.assertIsNone(get_connected_device("disconnected-phone"))
+
+    @patch("aircard.list_devices", return_value=MOCK_RAW_DEVICES)
+    @patch("aircard_backend.find_device_helper", return_value="/bin/device_helper")
+    @patch("aircard_backend.native")
+    def test_backend_missing_selected_device_does_not_probe_another(self, mock_native, mock_helper, mock_list):
+        import io
+        from contextlib import redirect_stdout
+        output = io.StringIO()
+        with redirect_stdout(output):
+            aircard_backend.cmd_devices("disconnected-phone")
+        result = json.loads(output.getvalue())
+        self.assertFalse(result["connected"])
+        self.assertEqual(result["error"], "selected_device_missing")
+        self.assertEqual(result["selected_udid"], "disconnected-phone")
+        self.assertEqual(len(result["devices"]), len(MOCK_RAW_DEVICES))
+        mock_native.assert_not_called()
+
+    @patch("aircard.list_devices", return_value=MOCK_RAW_DEVICES)
     @patch("aircard_backend.find_device_helper", return_value="/bin/device_helper")
     @patch("aircard_backend.native", return_value={"exitCode": 0, "targetGatePassed": True, "operation": {"ok": True}})
     def test_backend_cmd_devices(self, mock_native, mock_helper, mock_list):

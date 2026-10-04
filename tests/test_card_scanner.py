@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from aircard import CARD_REGEXES
+from wallet_discovery import card_ids
 
 
 @unittest.skipUnless(sys.platform == "darwin", "The native log reader requires macOS")
@@ -33,11 +33,10 @@ class CardScannerTests(unittest.TestCase):
             capture_output=True, text=True,
         )
         hashes = {
-            match.group(1)
+            card_id
             for line in result.stdout.splitlines()
             if "/cards/" in line.lower()
-            for pattern in CARD_REGEXES
-            for match in pattern.finditer(line)
+            for card_id in card_ids(line)
         }
         self.assertEqual(hashes, {"AAAAAAAAAAAAAAAAAAAAAAAAAAA="})
 

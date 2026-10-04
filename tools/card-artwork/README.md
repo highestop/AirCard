@@ -4,6 +4,8 @@
 
 将自己的图片裁切并导出为 **1536 × 969 PNG**，再交给 AirCard 预览和应用。工具是单个 [`index.html`](index.html) 文件，内置全部 CSS 和 JavaScript；无需安装依赖、启动服务器或联网。图片只在浏览器的本地 Canvas 中处理，没有上传、遥测或操作历史存储。
 
+也可以从 AirCard 网页中的「卡面编辑器」打开；编辑仍在本地浏览器中完成，导出后再选入待同步卡片。
+
 ### 本地使用
 
 1. 在本地仓库找到 [`tools/card-artwork/index.html`](index.html)。
@@ -18,11 +20,11 @@
 
 ### 构图与显示边界
 
-- **与 AirCard 的关系：** 初始裁切几何对应 [`AirCardApp.swift`](../../AirCardApp.swift) 中 `AppViewModel.prepareCardImage` 的 `max(1536 / width, 969 / height)` 比例和居中位置。本工具允许在导出前手动改变构图；它不安装 AirCard、不连接手机，也不直接替换 Wallet 文件。
+- **与 AirCard 的关系：** 初始裁切几何对应 [`image_processing.py`](../../image_processing.py) 的 `max(1536 / width, 969 / height)` 比例和居中位置。本工具允许在导出前手动改变构图；它不安装 AirCard、不连接手机，也不直接替换 Wallet 文件。
 - **像素与清晰度：** 当原图裁切区域小于输出所需像素时，页面显示放大提示。固定尺寸输出不能补回丢失的细节；增加缩放会进一步降低可用分辨率。
 - **透明区域：** 默认导出保留 alpha 通道。Wallet 如何显示透明区域取决于实际卡片及系统；如需要确定的底色，请选择白色或黑色。不会自动移除已有实色背景。
 - **预览范围：** 预览显示 PNG 的完整矩形范围，不模拟 Wallet 圆角、卡组织标志、文字叠加或实机缩放。让重要图案和文字远离边缘，并以实机效果为准。
-- **图片解码：** 浏览器负责读取照片方向和颜色，最终颜色、缩放插值及元数据处理不保证与 macOS 的 `NSImage` 逐像素一致。PNG/WebP 动画只读取一个静态画面，不能选择动画帧；精确选帧请先在其他工具中导出静态图片。
+- **图片解码：** 浏览器负责读取照片方向和颜色，最终颜色、缩放插值及元数据处理不保证与 macOS 的 `sips` 逐像素一致。PNG/WebP 动画只读取一个静态画面，不能选择动画帧；精确选帧请先在其他工具中导出静态图片。
 - **资源限制：** 文件与尺寸限制用于减少卡顿和内存占用。超大图片仍可能在浏览器解码过程中触及设备内存限制；低内存设备请先缩小原图。工具不重新压缩或修改源文件。
 - **错误处理：** 非图片、损坏文件或超限文件显示错误提示；如果已载入一张有效图片，原先的构图会保留。一次只接受一张图片；连续选择新图片时，以最后一次选择为准。
 - **离线与安全：** 不读取远程图片地址，不加载 CDN、字体、脚本或外部素材；页面的 CSP 禁止网络连接和外部资源。只有你主动选择或拖入的本地文件会被读取。刷新后不会记住图片或语言设置。
@@ -55,11 +57,11 @@ The top-right button switches between Chinese and English without changing the c
 
 ### Composition and display limitations
 
-- **Relationship to AirCard:** the initial crop geometry matches `AppViewModel.prepareCardImage` in [`AirCardApp.swift`](../../AirCardApp.swift): scale by `max(1536 / width, 969 / height)` and center the result. This utility lets you reframe before exporting. It does not install AirCard, connect to a phone, or replace Wallet files.
+- **Relationship to AirCard:** the initial crop geometry matches [`image_processing.py`](../../image_processing.py): scale by `max(1536 / width, 969 / height)` and center the result. This utility lets you reframe before exporting. It does not install AirCard, connect to a phone, or replace Wallet files.
 - **Resolution:** an enlargement notice appears when the crop contains fewer pixels than the output needs. Exporting at a fixed size cannot recover missing detail; zooming further reduces available source resolution.
 - **Transparency:** alpha is preserved by default. Wallet's handling of transparency depends on the card and system. Choose white or black for a defined background. Existing opaque backgrounds are not removed.
 - **Preview coverage:** the preview shows the full rectangular PNG, without simulating Wallet's rounded corners, network logos, text overlays, or device scaling. Keep important elements away from the edges and check the actual phone result.
-- **Decoding:** the browser handles photo orientation and colors. Color, interpolation, and metadata handling are not guaranteed to match macOS `NSImage` pixel for pixel. Animated PNG/WebP inputs are captured as one still image; frame selection is not supported. Export a specific frame elsewhere if needed.
+- **Decoding:** the browser handles photo orientation and colors. Color, interpolation, and metadata handling are not guaranteed to match macOS `sips` pixel for pixel. Animated PNG/WebP inputs are captured as one still image; frame selection is not supported. Export a specific frame elsewhere if needed.
 - **Resource limits:** file and dimension limits reduce stalls and memory use. A large file may still exceed device memory while the browser decodes it; resize first on low-memory devices. The source file is never overwritten or recompressed.
 - **Errors:** unsupported, corrupt, or oversized inputs show an error. If a valid image was already loaded, its composition is preserved. Only one file is accepted at a time; when selections overlap, the latest selection wins.
 - **Offline operation:** the page does not read remote image URLs or load CDNs, fonts, scripts, or external artwork. Its Content Security Policy blocks network connections and external resources. Only local files explicitly chosen or dropped by you are read. Images and language settings are not remembered after refresh.

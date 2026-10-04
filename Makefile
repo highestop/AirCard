@@ -1,16 +1,20 @@
 CLANG := xcrun clang
-# Without an explicit minimum the helpers inherit whatever macOS built them, so
-# a build made on a newer Mac quietly refuses to run on the versions the app
-# says it supports. Keep this in step with LSMinimumSystemVersion in build.sh.
+# Keep the USB helpers runnable on macOS 14 and newer.
 MACOS_MIN := 14.0
 CFLAGS := -fobjc-arc -O2 -Wall -Wextra -arch arm64 -arch x86_64 -mmacosx-version-min=$(MACOS_MIN)
 FOUNDATION := -framework Foundation -framework CoreFoundation
 MOBILEDEVICE := /System/Library/PrivateFrameworks/MobileDevice.framework/MobileDevice
 AIRTRAFFIC := /System/Library/PrivateFrameworks/AirTrafficHost.framework/AirTrafficHost
 
-.PHONY: all clean
+.PHONY: all clean run test
 
 all: build/device_helper build/airtraffic_host
+
+run: all
+	python3 aircard.py
+
+test:
+	python3 -m unittest discover -s tests -v
 
 build:
 	mkdir -p $@
