@@ -12,8 +12,7 @@ from urllib.parse import urlencode
 from backend.aircard_server import AirCardServer
 from backend.wallet_catalog import build_catalog
 from backend.wallet_service import WalletService
-from test_image_processing import png_image
-from test_wallet_service import A, FIRST, Process, wait_for
+from __tests__.fixtures import A, FIRST, Process, png_image, wait_for
 
 
 @unittest.skipUnless(Path("/usr/bin/sips").is_file(), "Requires the macOS native image decoder")

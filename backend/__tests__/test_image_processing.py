@@ -1,25 +1,13 @@
 """Exercise the same native decoder used for browser uploads and stored images."""
-import binascii
 import struct
 import subprocess
 import tempfile
 import unittest
-import zlib
 from pathlib import Path
 from unittest.mock import patch
 
 from backend.image_processing import HEIGHT, MAX_INPUT_BYTES, WIDTH, prepare_image
-
-
-def png_image(width, height, color):
-    def chunk(kind, content):
-        return (struct.pack(">I", len(content)) + kind + content
-                + struct.pack(">I", binascii.crc32(kind + content) & 0xffffffff))
-    rows = b"".join(b"\0" + b"".join(bytes(color(x, y)) for x in range(width))
-                    for y in range(height))
-    return (b"\x89PNG\r\n\x1a\n"
-            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+from __tests__.fixtures import png_image
 
 
 def bmp_pixels(png):

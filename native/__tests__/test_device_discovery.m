@@ -1,4 +1,4 @@
-#import "../native/device_discovery.h"
+#import "../device_discovery.h"
 #include <assert.h>
 
 // The legacy AMDevice API only reaches devices through usbmuxd, so the

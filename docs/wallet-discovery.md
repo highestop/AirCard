@@ -70,7 +70,7 @@ live card-ID overlap first.
 
 ## Validation
 
-`python3 -m unittest discover -s tests -v` covers native log decoding, cache
+`make test` covers native log decoding, cache
 parsing, malformed/cyclic archives, ambiguous devices, missing metadata, exact
 ID matching, duplicate names, pending counts, repeat scanning, legacy migration,
 per-device persistence, skin identity across reordering, and clear/relaunch.
