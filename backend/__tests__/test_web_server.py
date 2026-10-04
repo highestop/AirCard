@@ -5,7 +5,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from backend.aircard_server import AirCardServer, MAX_IMAGE_BYTES
+from backend.server import LocalServer, MAX_IMAGE_BYTES
 
 
 class FakeService:
@@ -31,7 +31,7 @@ class FakeService:
 class WebServerTests(unittest.TestCase):
     def setUp(self):
         self.service = FakeService()
-        self.server = AirCardServer(self.service, 0)
+        self.server = LocalServer(self.service, 0)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.addCleanup(self.stop)
@@ -45,7 +45,7 @@ class WebServerTests(unittest.TestCase):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=3)
         request_headers = dict(headers or {})
         if token:
-            request_headers["X-AirCard-Token"] = self.server.token
+            request_headers["X-Apple-Wallet-Card-Skinner-Token"] = self.server.token
         connection.request(method, path, body, request_headers)
         response = connection.getresponse()
         result = response.status, dict(response.getheaders()), response.read()
@@ -76,8 +76,17 @@ class WebServerTests(unittest.TestCase):
         self.assertEqual(self.service.actions, [("devices.refresh", {})])
 
     def test_non_ascii_token_is_rejected_without_crashing_handler(self):
-        status, _, _ = self.request("GET", "/api/state", headers={"X-AirCard-Token": "\u00e9"}, token=False)
+        status, _, _ = self.request("GET", "/api/state", headers={"X-Apple-Wallet-Card-Skinner-Token": "\u00e9"}, token=False)
         self.assertEqual(status, 403)
+
+    def test_legacy_token_alias_keeps_authentication_and_origin_checks(self):
+        legacy = {"X-AirCard-Token": self.server.token}
+        self.assertEqual(self.request("GET", "/api/state", headers=legacy, token=False)[0], 200)
+        self.assertEqual(self.request("GET", "/api/state", headers={"X-AirCard-Token": "wrong"}, token=False)[0], 403)
+        self.assertEqual(self.request("GET", "/api/state", headers={"X-AirCard-Token": "\u00e9"}, token=False)[0], 403)
+        for extra in ({"Origin": "https://example.com"}, {"Host": "evil.example"},
+                      {"Sec-Fetch-Site": "cross-site"}, {"X-Apple-Wallet-Card-Skinner-Token": "wrong"}):
+            self.assertEqual(self.request("GET", "/api/state", headers={**legacy, **extra}, token=False)[0], 403)
 
     def test_server_preserves_controller_card_verification(self):
         body = json.dumps({"action": "flash.start", "payload": {"udid": "phone"}})
@@ -104,7 +113,7 @@ class WebServerTests(unittest.TestCase):
         self.assertFalse(self.service.uploads)
 
     def test_no_filesystem_or_device_artwork_exposure(self):
-        for path in ("/../AGENTS.md", "/%2e%2e/AGENTS.md", "/aircard_server.py", "/api/artwork?udid=x&card_id=y"):
+        for path in ("/../AGENTS.md", "/%2e%2e/AGENTS.md", "/server.py", "/api/artwork?udid=x&card_id=y"):
             self.assertEqual(self.request("GET", path)[0], 404)
         self.assertEqual(self.request("GET", "/api/artwork?udid=x&card_id=y", token=False)[0], 403)
 

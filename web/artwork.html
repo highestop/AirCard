@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>AirCard · 卡面编辑器</title>
+  <title>apple-wallet-card-skinner · 卡面编辑器</title>
   <style>
     :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #192539; background: #f4f6fa; font-synthesis: none; }
     * { box-sizing: border-box; }
@@ -19,11 +19,12 @@
     .shell { width: min(1160px, calc(100% - 48px)); margin: auto; }
     header { border-bottom: 1px solid #e1e6ef; background: rgba(255,255,255,.85); }
     .header-row { min-height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: -.3px; }
-    .brand-icon { width: 32px; height: 23px; border: 2px solid #4169e9; border-radius: 6px; position: relative; transform: rotate(-8deg); }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; font-weight: 700; letter-spacing: -.3px; }
+    .brand > div { min-width: 0; overflow-wrap: anywhere; }
+    .brand-icon { width: 32px; height: 23px; flex-shrink: 0; border: 2px solid #4169e9; border-radius: 6px; position: relative; transform: rotate(-8deg); }
     .brand-icon::after { content: ""; position: absolute; top: 7px; left: 5px; width: 8px; height: 5px; border-radius: 2px; background: #4169e9; }
     .brand small { display: block; font-size: 11px; letter-spacing: 1.3px; color: #6a778e; font-weight: 600; margin-top: 3px; }
-    #language-toggle { padding: 8px 13px; font-size: 13px; }
+    #language-toggle { padding: 8px 13px; flex-shrink: 0; font-size: 13px; }
     main { padding: 44px 0 28px; }
     .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #3159bf; background: #e8eefc; border: 1px solid #d9e3fb; border-radius: 30px; padding: 6px 11px; font-size: 12px; font-weight: 600; }
     .eyebrow::before { content: ""; width: 6px; height: 6px; background: #4872e5; border-radius: 50%; }
@@ -84,13 +85,13 @@
 </head>
 <body>
   <header><div class="shell header-row">
-    <div class="brand"><span class="brand-icon" aria-hidden="true"></span><div>AirCard<small data-i18n="brandSub">卡面工作台</small></div></div>
+    <div class="brand"><span class="brand-icon" aria-hidden="true"></span><div>apple-wallet-card-skinner<small data-i18n="brandSub">卡面工作台</small></div></div>
     <button id="language-toggle" type="button" lang="en" aria-label="Switch to English">English</button>
   </div></header>
   <main class="shell">
     <span class="eyebrow" data-i18n="badge">离线工具 · 图片仅在本机处理</span>
     <h1 data-i18n="title">让卡面，刚好合适。</h1>
-    <p class="intro" data-i18n="intro">选一张图片，调整构图，导出 1536 × 969 PNG。下载本 HTML 后即可离线使用，再将制作好的卡面导入 AirCard。</p>
+    <p class="intro" data-i18n="intro">选一张图片，调整构图，导出 1536 × 969 PNG。下载本 HTML 后即可离线使用，再将制作好的卡面导入 apple-wallet-card-skinner。</p>
     <div class="workspace">
       <section class="panel" aria-labelledby="preview-heading">
         <div class="panel-heading"><span class="step">1</span><h2 id="preview-heading" data-i18n="previewHeading">选择图片与预览裁切</h2></div>
@@ -119,15 +120,15 @@
           <div class="control"><div class="label-row"><label for="position-y" data-i18n="positionY">垂直取景</label><output id="position-y-value" for="position-y">50%</output></div><input id="position-y" type="range" min="0" max="100" step="0.1" value="50" disabled><div class="range-ends"><span data-i18n="top">原图上方</span><span data-i18n="bottom">原图下方</span></div><p class="small-note" data-i18n="positionNote">某一方向已完整显示时，该方向的滑杆不可用。放大后可继续调整。</p></div>
           <div class="control"><div class="label-row"><label for="background" data-i18n="background">透明区域处理</label></div><select id="background" disabled><option value="transparent" data-i18n="transparent">保留透明通道</option><option value="white" data-i18n="white">填充白色背景</option><option value="black" data-i18n="black">填充黑色背景</option></select><p class="small-note" data-i18n="alphaNote">默认保留原图透明度；手机上的透明区域显示可能不同。</p></div>
           <button id="reset-button" type="button" disabled data-i18n="reset">重置缩放与居中构图</button>
-          <div class="export"><div class="export-meta"><span data-i18n="exportSize">导出尺寸</span><strong>1536 × 969 px · PNG</strong></div><button id="apply-button" type="button" disabled hidden>应用到卡片</button><button id="export-button" type="button" disabled data-i18n="download">下载卡面 PNG</button><p id="apply-note" class="small-note" hidden></p><p class="small-note" data-i18n="downloadNote">导出后在 AirCard 中选择此 PNG，再预览和应用。</p></div>
+          <div class="export"><div class="export-meta"><span data-i18n="exportSize">导出尺寸</span><strong>1536 × 969 px · PNG</strong></div><button id="apply-button" type="button" disabled hidden>应用到卡片</button><button id="export-button" type="button" disabled data-i18n="download">下载卡面 PNG</button><p id="apply-note" class="small-note" hidden></p><p class="small-note" data-i18n="downloadNote">导出后在 apple-wallet-card-skinner 中选择此 PNG，再预览和应用。</p></div>
         </div>
       </section>
     </div>
     <section class="panel details" aria-label="说明 / Notes">
       <div><h3 data-i18n="privacyTitle">本地处理，文件由你保管</h3><p data-i18n="privacyText">无需账号、联网或安装依赖。不会上传图片、保存操作历史或连接手机。关闭页面后，未导出的构图不会保留。</p></div>
-      <div><h3 data-i18n="displayTitle">关于实际显示效果</h3><p data-i18n="displayText">初始构图采用 AirCard 的等比填满与居中裁切规则。此预览仅展示图片范围，不模拟 Wallet 的圆角、文字与标志叠加；浏览器与手机的色彩和缩放也可能不同。</p></div>
+      <div><h3 data-i18n="displayTitle">关于实际显示效果</h3><p data-i18n="displayText">初始构图采用 apple-wallet-card-skinner 的等比填满与居中裁切规则。此预览仅展示图片范围，不模拟 Wallet 的圆角、文字与标志叠加；浏览器与手机的色彩和缩放也可能不同。</p></div>
     </section>
-    <footer data-i18n="footer">本工具制作卡面图片，设备连接与卡面同步由 AirCard 主页面完成。</footer>
+    <footer data-i18n="footer">本工具制作卡面图片，设备连接与卡面同步由 apple-wallet-card-skinner 主页面完成。</footer>
   </main>
   <noscript><p style="margin:24px">此离线工具需要启用 JavaScript。This offline tool requires JavaScript.</p></noscript>
   <script>
@@ -136,17 +137,17 @@
     const LIMITS = Object.freeze({ bytes: 30 * 1024 * 1024, pixels: 48000000, edge: 16384 });
     const STRINGS = {
       zh: {
-        pageTitle: 'AirCard · 卡面编辑器', brandSub: '卡面工作台', badge: '离线工具 · 图片仅在本机处理', title: '让卡面，刚好合适。',
-        intro: '选一张图片，调整构图，导出 1536 × 969 PNG。下载本 HTML 后即可离线使用，再将制作好的卡面导入 AirCard。',
+        pageTitle: 'apple-wallet-card-skinner · 卡面编辑器', brandSub: '卡面工作台', badge: '离线工具 · 图片仅在本机处理', title: '让卡面，刚好合适。',
+        intro: '选一张图片，调整构图，导出 1536 × 969 PNG。下载本 HTML 后即可离线使用，再将制作好的卡面导入 apple-wallet-card-skinner。',
         previewHeading: '选择图片与预览裁切', emptyTitle: '将图片拖到这里', emptyText: '或点击下方按钮，从设备中选择图片', choose: '选择图片',
         fileLimits: 'PNG / JPEG / WebP · 最多 30 MiB · 不超过 48 MP，单边不超过 16,384 px',
         previewNote: '预览框内即为导出范围。棋盘格表示透明区域，不会写入 PNG。可拖动图片，或用定位滑杆调整。',
         controlsHeading: '调整构图', zoom: '缩放', fill: '等比填满', positionX: '水平取景', positionY: '垂直取景', left: '原图左侧', right: '原图右侧', top: '原图上方', bottom: '原图下方',
         positionNote: '某一方向已完整显示时，该方向的滑杆不可用。放大后可继续调整。', background: '透明区域处理', transparent: '保留透明通道', white: '填充白色背景', black: '填充黑色背景',
-        alphaNote: '默认保留原图透明度；手机上的透明区域显示可能不同。', reset: '重置缩放与居中构图', exportSize: '导出尺寸', download: '下载卡面 PNG', downloadNote: '导出后在 AirCard 中选择此 PNG，再预览和应用。',
+        alphaNote: '默认保留原图透明度；手机上的透明区域显示可能不同。', reset: '重置缩放与居中构图', exportSize: '导出尺寸', download: '下载卡面 PNG', downloadNote: '导出后在 apple-wallet-card-skinner 中选择此 PNG，再预览和应用。',
         privacyTitle: '本地处理，文件由你保管', privacyText: '无需账号、联网或安装依赖。不会上传图片、保存操作历史或连接手机。关闭页面后，未导出的构图不会保留。',
-        displayTitle: '关于实际显示效果', displayText: '初始构图采用 AirCard 的等比填满与居中裁切规则。此预览仅展示图片范围，不模拟 Wallet 的圆角、文字与标志叠加；浏览器与手机的色彩和缩放也可能不同。',
-        footer: '本工具制作卡面图片，设备连接与卡面同步由 AirCard 主页面完成。',
+        displayTitle: '关于实际显示效果', displayText: '初始构图采用 apple-wallet-card-skinner 的等比填满与居中裁切规则。此预览仅展示图片范围，不模拟 Wallet 的圆角、文字与标志叠加；浏览器与手机的色彩和缩放也可能不同。',
+        footer: '本工具制作卡面图片，设备连接与卡面同步由 apple-wallet-card-skinner 主页面完成。',
         canvasLabel: '卡面裁切预览；可拖动图片、使用方向键，或使用定位滑杆', fileLabel: '选择 PNG、JPEG 或 WebP 图片',
         sourceInfo: '原图：{width} × {height} px · {size} MiB', cropInfo: '当前使用约 {width} × {height} px 的原图区域',
         upscale: '分辨率提示：当前裁切区域需要放大至 {percent}%，导出可能变模糊。可减小缩放或使用更高分辨率的原图。',
@@ -157,17 +158,17 @@
         canvasError: '浏览器无法创建绘图画布，请尝试更新浏览器。', exportError: 'PNG 导出失败，可能是浏览器内存不足。请使用更小的原图后重试。', previousKept: '原先载入的图片保持不变。'
       },
       en: {
-        pageTitle: 'AirCard · Artwork Editor', brandSub: 'ARTWORK STUDIO', badge: 'Offline tool · Images stay on your device', title: 'Find the right frame.',
-        intro: 'Choose an image, adjust the crop, and export a 1536 × 969 PNG. Download this HTML file to work offline, then import your finished artwork into AirCard.',
+        pageTitle: 'apple-wallet-card-skinner · Artwork Editor', brandSub: 'ARTWORK STUDIO', badge: 'Offline tool · Images stay on your device', title: 'Find the right frame.',
+        intro: 'Choose an image, adjust the crop, and export a 1536 × 969 PNG. Download this HTML file to work offline, then import your finished artwork into apple-wallet-card-skinner.',
         previewHeading: 'Choose an image & preview the crop', emptyTitle: 'Drop an image here', emptyText: 'Or use the button below to choose a file from your device', choose: 'Choose image',
         fileLimits: 'PNG / JPEG / WebP · Up to 30 MiB · Up to 48 MP, with each side no larger than 16,384 px',
         previewNote: 'Everything inside the preview is included in the export. The checkerboard indicates transparency and is not part of the PNG. Drag the image or use the position sliders.',
         controlsHeading: 'Adjust the composition', zoom: 'Zoom', fill: 'Scale to fill', positionX: 'Horizontal crop position', positionY: 'Vertical crop position', left: 'Left of source', right: 'Right of source', top: 'Top of source', bottom: 'Bottom of source',
         positionNote: 'A slider is disabled when that entire dimension is visible. Zoom in to allow more adjustment.', background: 'Transparent areas', transparent: 'Keep transparency', white: 'Fill with white', black: 'Fill with black',
-        alphaNote: 'Source transparency is preserved by default; transparent areas may look different on the phone.', reset: 'Reset zoom & center crop', exportSize: 'Export size', download: 'Download artwork PNG', downloadNote: 'Select this PNG in AirCard, then preview and apply it.',
+        alphaNote: 'Source transparency is preserved by default; transparent areas may look different on the phone.', reset: 'Reset zoom & center crop', exportSize: 'Export size', download: 'Download artwork PNG', downloadNote: 'Select this PNG in apple-wallet-card-skinner, then preview and apply it.',
         privacyTitle: 'Local processing. Your files stay yours.', privacyText: 'No account, connection, or dependencies required. Images are never uploaded. This page does not keep an editing history or connect to your phone. Export before closing to keep your work.',
-        displayTitle: 'What to expect on your phone', displayText: 'The initial composition uses AirCard’s scale-to-fill and center-crop geometry. This preview only shows the image area, without Wallet’s rounded corners, text, or logos. Browser and phone colors and scaling may also differ.',
-        footer: 'This editor prepares artwork. Connect and sync your phone from the AirCard main page.',
+        displayTitle: 'What to expect on your phone', displayText: 'The initial composition uses apple-wallet-card-skinner’s scale-to-fill and center-crop geometry. This preview only shows the image area, without Wallet’s rounded corners, text, or logos. Browser and phone colors and scaling may also differ.',
+        footer: 'This editor prepares artwork. Connect and sync your phone from the apple-wallet-card-skinner main page.',
         canvasLabel: 'Card artwork crop preview; drag, use arrow keys, or adjust the position sliders', fileLabel: 'Choose a PNG, JPEG, or WebP image',
         sourceInfo: 'Source: {width} × {height} px · {size} MiB', cropInfo: 'Using approximately {width} × {height} px of the source image',
         upscale: 'Resolution notice: this crop is enlarged to {percent}%, which may soften the result. Reduce zoom or use a higher-resolution source.',
@@ -201,7 +202,7 @@
     function safeFileName(original) {
       const stem = original.replace(/\.[^.]+$/, '').normalize('NFC').replace(/[\x00-\x1f\x7f/\\:*?"<>|]/g, '-').trim().replace(/[. ]+$/g, '');
       const shortStem = Array.from(stem).slice(0, 64).join('') || 'artwork';
-      return `${shortStem}-aircard-1536x969.png`;
+      return `${shortStem}-apple-wallet-card-skinner-1536x969.png`;
     }
 
     function supportedSignature(bytes) {
@@ -385,7 +386,7 @@
       if (window.parent === window || window.location.origin === 'null' ||
           event.source !== window.parent || event.origin !== window.location.origin) return;
       const data = event.data;
-      if (!data || data.channel !== 'aircard-artwork' || data.session !== expectedSession) return;
+      if (!data || data.channel !== 'apple-wallet-card-skinner-artwork' || data.session !== expectedSession) return;
       if (data.type === 'error' && host?.session === data.session) {
         state.exporting = false;
         fail('applyError');
@@ -407,7 +408,7 @@
       render();
       try {
         const image = await exportPNG();
-        host.source.postMessage({ channel: 'aircard-artwork', type: 'apply', session: host.session, image }, host.origin);
+        host.source.postMessage({ channel: 'apple-wallet-card-skinner-artwork', type: 'apply', session: host.session, image }, host.origin);
       } catch (_) {
         state.exporting = false;
         fail('exportError');
@@ -441,7 +442,7 @@
     setLanguage('zh');
     if (!context) fail('canvasError');
     if (window.parent !== window && window.location.origin !== 'null' && /^[a-zA-Z0-9-]{16,80}$/.test(expectedSession || '')) {
-      window.parent.postMessage({ channel: 'aircard-artwork', type: 'ready', session: expectedSession }, window.location.origin);
+      window.parent.postMessage({ channel: 'apple-wallet-card-skinner-artwork', type: 'ready', session: expectedSession }, window.location.origin);
     }
   </script>
 </body>

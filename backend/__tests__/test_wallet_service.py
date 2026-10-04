@@ -8,12 +8,73 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
+from backend import APP_NAME
 from backend.wallet_service import WalletService, empty_catalog
 from backend.wallet_store import WalletStore
 from __tests__.fixtures import A, B, C, FIRST, SECOND, Process, wait_for
 
 
 class WalletStoreTests(unittest.TestCase):
+    def test_new_install_uses_renamed_data_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            with patch("backend.wallet_store.Path.home", return_value=home):
+                store = WalletStore()
+            self.addCleanup(store.close)
+            self.assertEqual(store.root, home / "Library/Application Support" / APP_NAME)
+            self.assertTrue(store.path.is_file())
+            self.assertFalse((home / "Library/Application Support/AirCard").exists())
+
+    def test_existing_aircard_store_is_reused_without_moving_artwork(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            legacy = home / "Library/Application Support/AirCard"
+            first = WalletStore(legacy, home)
+            artwork = first.write_artwork(b"existing artwork")
+            first.data["selected_udid"] = "saved-phone"
+            first.records("saved-phone").append({"id": A, "selected": False, "imagePath": str(artwork)})
+            first.save()
+            first.close()
+            with patch("backend.wallet_store.Path.home", return_value=home):
+                restored = WalletStore()
+            self.addCleanup(restored.close)
+            self.assertEqual(restored.root, legacy)
+            self.assertEqual(restored.data["selected_udid"], "saved-phone")
+            self.assertEqual(restored.records("saved-phone")[0]["imagePath"], str(artwork))
+            self.assertEqual(artwork.read_bytes(), b"existing artwork")
+            self.assertFalse((legacy.parent / APP_NAME).exists())
+
+    def test_renamed_data_directory_takes_precedence_even_when_empty(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            support = home / "Library/Application Support"
+            legacy = WalletStore(support / "AirCard", home)
+            legacy.data["selected_udid"] = "old-phone"
+            legacy.save()
+            legacy.close()
+            (support / APP_NAME).mkdir()
+            with patch("backend.wallet_store.Path.home", return_value=home):
+                current = WalletStore()
+            self.addCleanup(current.close)
+            self.assertEqual(current.root, support / APP_NAME)
+            self.assertIsNone(current.data["selected_udid"])
+            self.assertEqual(json.loads(legacy.path.read_text())["selected_udid"], "old-phone")
+
+    def test_explicit_data_directory_overrides_both_default_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            support = home / "Library/Application Support"
+            for name in ("AirCard", APP_NAME):
+                (support / name).mkdir(parents=True)
+            override = home / "custom-data"
+            with patch("backend.wallet_store.Path.home", return_value=home):
+                current = WalletStore(override)
+            self.addCleanup(current.close)
+            self.assertEqual(current.root, override)
+            self.assertTrue(current.path.is_file())
+            self.assertFalse((support / APP_NAME / "state.json").exists())
+            self.assertFalse((support / "AirCard" / "state.json").exists())
+
     def test_imports_device_images_selections_hashes_and_clears_once(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / "home"
@@ -50,7 +111,7 @@ class WalletStoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             first = WalletStore(root / "data", root)
-            with self.assertRaisesRegex(RuntimeError, "Another AirCard"):
+            with self.assertRaisesRegex(RuntimeError, "Another apple-wallet-card-skinner"):
                 WalletStore(root / "data", root)
             first.close()
             second = WalletStore(root / "data", root)
@@ -87,7 +148,7 @@ class WalletServiceTests(unittest.TestCase):
             if "syslog" in command:
                 process = Process()
             else:
-                self.assertEqual(command[:5], [sys.executable, "-u", "-m", "backend.aircard_backend", "--flash"])
+                self.assertEqual(command[:5], [sys.executable, "-u", "-m", "backend.writer", "--flash"])
                 self.assertEqual(Path(kwargs["cwd"]), Path(__file__).resolve().parents[2])
                 self.assertTrue(kwargs.get("start_new_session"), "Ctrl+C must not interrupt native write cleanup")
                 process = self.flash_results.pop(0) if self.flash_results else Process(json.dumps({"type": "success", "step": 8, "total": 8, "message": "Updated"}) + "\n")
@@ -124,6 +185,15 @@ class WalletServiceTests(unittest.TestCase):
         self.service.dispatch("scan.stop", {"udid": "first-phone"})
         wait_for(lambda: not self.service.snapshot()["scanning"])
         wait_for(lambda: not self.service.snapshot()["reading_cache"])
+
+    def test_current_and_legacy_native_scanner_status_prefixes_are_understood(self):
+        process = self.scan()
+        for prefix, message in ((f"{APP_NAME} scanner: ", "Current helper ready"),
+                                ("AirCard scanner: ", "Previously built helper ready")):
+            with self.subTest(prefix=prefix):
+                process.feed(prefix + message + "\n")
+                wait_for(lambda: self.service.snapshot()["scanner_message"] == message)
+        self.stop()
 
     def test_manual_and_saved_cards_hidden_until_current_scan(self):
         self.service.dispatch("cards.save_ids", {"udid": "first-phone", "text": f"{B}, {A}; ../../bad"})

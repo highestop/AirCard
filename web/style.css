@@ -38,11 +38,12 @@ button { border: 0; }
 .subtle { color: var(--muted); font-size: 12px; }
 .app-header { border-bottom: 1px solid var(--line); background: var(--surface); }
 .header-inner { max-width: 1240px; padding: 20px 32px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.brand { display: inline-flex; gap: 12px; align-items: center; color: var(--text); }
+.brand { display: inline-flex; gap: 12px; align-items: center; min-width: 0; color: var(--text); }
+.brand > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .brand:hover { text-decoration: none; }
 .brand strong { display: block; font-size: 22px; letter-spacing: -.65px; line-height: 1.25; }
 .brand-caption { color: var(--muted); font-size: 11px; letter-spacing: .3px; }
-.brand-mark { width: 43px; height: 43px; border-radius: 13px; display: grid; place-items: center; background: var(--blue); color: white; box-shadow: 0 4px 10px #2964e824; }
+.brand-mark { width: 43px; height: 43px; flex-shrink: 0; border-radius: 13px; display: grid; place-items: center; background: var(--blue); color: white; box-shadow: 0 4px 10px #2964e824; }
 .brand-mark .icon { width: 27px; height: 27px; }
 .device-control { min-width: 230px; display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 7px 9px 7px 14px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #b1b7c1; flex: 0 0 auto; }
@@ -204,7 +205,9 @@ dialog .inline-error { color: var(--red); margin-top: 10px; margin-bottom: 0; wh
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 100px; background: #253147; color: #fff; padding: 10px 18px; border-radius: 10px; z-index: 20; font-size: 12px; box-shadow: 0 3px 20px #0002; max-width: calc(100vw - 40px); text-align: center; }
 .working .icon { animation: breathe 1s infinite; }
 @media (max-width: 760px) {
-  .header-inner { padding: 17px 20px; }
+  .header-inner { padding: 17px 20px; flex-wrap: wrap; gap: 14px; }
+  .header-inner .brand { flex-basis: 100%; }
+  .device-control { width: 100%; }
   .workspace { padding: 25px 18px 155px; }
   .page-heading { display: block; margin-bottom: 20px; }
   h1 { font-size: 24px; }
@@ -231,7 +234,7 @@ dialog .inline-error { color: var(--red); margin-top: 10px; margin-bottom: 0; wh
   .brand strong { font-size: 19px; }
   .brand-mark { width: 35px; height: 35px; border-radius: 11px; }
   .brand-mark .icon { width: 22px; height: 22px; }
-  .device-control { min-width: 0; max-width: 57%; padding: 6px 5px 6px 10px; gap: 6px; }
+  .device-control { min-width: 0; padding: 6px 5px 6px 10px; gap: 6px; }
   .device-fields select { max-width: 165px; font-size: 11px; }
   .device-detail { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .device-control .icon-button { width: 23px; }

@@ -15,11 +15,13 @@ import threading
 import time
 from pathlib import Path
 
+from . import APP_NAME
 from .paths import ROOT
 from .wallet_discovery import activation_ids, card_ids, is_wallet_line, valid_card_id
 from .wallet_store import WalletStore
 
 SCANNER_STOP_TIMEOUT = 5
+SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", "AirCard scanner: ")
 
 
 def empty_catalog():
@@ -30,7 +32,7 @@ class WalletService:
     def __init__(self, data_dir: Path | None = None, *, discover_devices=None,
                  helper_finder=None, catalog_reader=None, popen=None,
                  image_preparer=None, legacy_home=None, connect_on_launch=True):
-        from .aircard import find_device_helper, get_all_connected_devices
+        from .devices import find_device_helper, get_all_connected_devices
         from .wallet_catalog import build_catalog
         self._discover_devices = discover_devices or get_all_connected_devices
         self._helper_finder = helper_finder or find_device_helper
@@ -128,7 +130,7 @@ class WalletService:
 
     def _require_device(self, udid, *, mutation=False):
         if self._closed:
-            raise ValueError("AirCard is shutting down.")
+            raise ValueError("apple-wallet-card-skinner is shutting down.")
         if not self._device or not self._device.get("connected") or udid != self._device["udid"]:
             raise ValueError("The selected iPhone changed or disconnected. Refresh devices and try again.")
         if mutation and (self._flashing or self._checking):
@@ -148,7 +150,7 @@ class WalletService:
                 if not isinstance(payload, dict):
                     raise ValueError("Action payload must be an object.")
                 if self._closed:
-                    raise ValueError("AirCard is shutting down.")
+                    raise ValueError("apple-wallet-card-skinner is shutting down.")
                 if action == "logs.clear":
                     self._logs.clear()
                 elif action == "notices.clear":
@@ -428,9 +430,11 @@ class WalletService:
                     if stopped.is_set() or self._closed or generation != self._generation or not self._device or self._device["udid"] != udid:
                         break
                     line = line.rstrip("\r\n")[:65536]
-                    if line.startswith("AirCard scanner: "):
+                    # Also understand helpers built before the project rename.
+                    scanner_prefix = next((prefix for prefix in SCANNER_PREFIXES if line.startswith(prefix)), None)
+                    if scanner_prefix:
                         self._log(line)
-                        self._scanner_message = ("Scanner connected. Open Wallet and tap a card." if "Connected to the unified" in line else line.removeprefix("AirCard scanner: "))
+                        self._scanner_message = ("Scanner connected. Open Wallet and tap a card." if "Connected to the unified" in line else line.removeprefix(scanner_prefix))
                         continue
                     if "setactivepaymentapplet" in line.lower():
                         activation_buffer = line
@@ -554,15 +558,15 @@ class WalletService:
             for index, row in enumerate(targets):
                 with self._lock:
                     if self._closed:
-                        failure = "AirCard stopped before all selected cards were written."
+                        failure = "apple-wallet-card-skinner stopped before all selected cards were written."
                         break
-                with tempfile.TemporaryDirectory(prefix="aircard-artwork-") as directory:
+                with tempfile.TemporaryDirectory(prefix="apple-wallet-card-skinner-artwork-") as directory:
                     source = Path(row["imagePath"]).read_bytes()
                     if hashlib.sha256(source).hexdigest() != row["signature"]:
                         raise RuntimeError("Artwork changed during preparation. Select it again and retry.")
                     image = Path(directory) / "card.png"
                     image.write_bytes(self._prepare_image(source))
-                    process = self._popen([sys.executable, "-u", "-m", "backend.aircard_backend", "--flash", udid, row["id"], str(image)],
+                    process = self._popen([sys.executable, "-u", "-m", "backend.writer", "--flash", udid, row["id"], str(image)],
                                           cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                           start_new_session=True, text=True, encoding="utf-8", errors="replace", bufsize=1)
                     success = False

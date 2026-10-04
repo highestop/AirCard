@@ -163,10 +163,10 @@ test('input signatures accept supported raster formats and reject renamed SVG', 
 
 test('export filenames keep a useful stem and bound long or unsafe names', () => {
   const { safeFileName } = harness().api;
-  assert.equal(safeFileName('my.photo.png'), 'my.photo-aircard-1536x969.png');
-  assert.equal(safeFileName('.png'), 'artwork-aircard-1536x969.png');
+  assert.equal(safeFileName('my.photo.png'), 'my.photo-apple-wallet-card-skinner-1536x969.png');
+  assert.equal(safeFileName('.png'), 'artwork-apple-wallet-card-skinner-1536x969.png');
   assert.ok(!/[\x00-\x1f\x7f/\\:*?"<>|]/.test(safeFileName('foo/bar:*?\0.png')));
-  assert.equal(Array.from(safeFileName('图'.repeat(300) + '.png').split('-aircard')[0]).length, 64);
+  assert.equal(Array.from(safeFileName('图'.repeat(300) + '.png').split('-apple-wallet-card-skinner')[0]).length, 64);
 });
 
 test('empty state disables editing and export, and defaults to Chinese', () => {
@@ -285,7 +285,7 @@ test('PNG download exports the current canvas and remains independent of the hos
   h.state.zoom = 2;
   await h.elements.get('export-button').handlers.click();
   assert.match(html, /canvas id="preview" width="1536" height="969"/);
-  assert.equal(h.links[0].download, 'family-aircard-1536x969.png');
+  assert.equal(h.links[0].download, 'family-apple-wallet-card-skinner-1536x969.png');
   assert.equal(h.links[0].clicked, true);
   assert.deepEqual(h.revoked, ['blob:fixture-export']);
   assert.equal(h.messages.length, 0);
@@ -296,7 +296,7 @@ test('embedded editor accepts only its parent origin and URL session, then loads
   const h = harness({ embedded: true });
   assert.equal(h.messages[0].data.type, 'ready');
   assert.equal(h.messages[0].data.session, h.session);
-  const init = { channel: 'aircard-artwork', type: 'init', session: h.session, targetCount: 2,
+  const init = { channel: 'apple-wallet-card-skinner-artwork', type: 'init', session: h.session, targetCount: 2,
     image: new Blob([PNG_HEADER], { type: 'image/png' }), name: 'existing.png' };
   await h.receive(init, { origin: 'https://other.example' });
   await h.receive(init, { source: {} });
@@ -318,7 +318,7 @@ test('embedded editor accepts only its parent origin and URL session, then loads
 
 test('apply sends a PNG Blob and editor session only, and a host error allows retry', async () => {
   const h = harness({ embedded: true });
-  await h.receive({ channel: 'aircard-artwork', type: 'init', session: h.session, targetCount: 1 });
+  await h.receive({ channel: 'apple-wallet-card-skinner-artwork', type: 'init', session: h.session, targetCount: 1 });
   await h.loadImage();
   await h.elements.get('apply-button').handlers.click();
   const { data, origin } = h.messages.at(-1);
@@ -329,14 +329,14 @@ test('apply sends a PNG Blob and editor session only, and a host error allows re
   assert.equal(h.state.exporting, true);
   await h.elements.get('apply-button').handlers.click();
   assert.equal(h.messages.length, 2, 'A pending apply cannot be sent twice');
-  await h.receive({ channel: 'aircard-artwork', type: 'error', session: h.session });
+  await h.receive({ channel: 'apple-wallet-card-skinner-artwork', type: 'error', session: h.session });
   assert.equal(h.state.exporting, false);
   assert.equal(h.elements.get('apply-button').disabled, false);
 });
 
 test('no selected card keeps download available and never emits apply', async () => {
   const h = harness({ embedded: true });
-  await h.receive({ channel: 'aircard-artwork', type: 'init', session: h.session, targetCount: 0 });
+  await h.receive({ channel: 'apple-wallet-card-skinner-artwork', type: 'init', session: h.session, targetCount: 0 });
   await h.loadImage();
   assert.equal(h.elements.get('apply-button').disabled, true);
   assert.equal(h.elements.get('export-button').disabled, false);

@@ -1,4 +1,4 @@
-# AirCard
+# apple-wallet-card-skinner
 
 A personal tool for customizing Apple Wallet card artwork. The interface runs in a browser, while a Python service and native USB tools on the Mac handle device operations:
 
@@ -15,11 +15,11 @@ Browser → http://127.0.0.1:8765 → Python → native macOS device tools → i
 
 Artwork writing uses the existing iOS 18+ implementation. Private device interfaces and Wallet logs can change between system versions; compatibility still depends on testing with the actual device.
 
-## Start AirCard
+## Start apple-wallet-card-skinner
 
 ```sh
-git clone https://github.com/highestop/AirCard.git
-cd AirCard
+git clone https://github.com/highestop/apple-wallet-card-skinner.git
+cd apple-wallet-card-skinner
 ./start.sh
 ```
 
@@ -65,12 +65,14 @@ See [card identification and diagnostics](docs/wallet-discovery.md) and [connect
 
 ## Local data
 
-Data is stored in `~/Library/Application Support/AirCard/` by default:
+Data is stored in `~/Library/Application Support/apple-wallet-card-skinner/` by default:
 
 - `state.json`: cards, selection state, image references, and successful-write signatures for each iPhone.
 - `artwork/`: local copies of imported images. Moving the original files does not affect newly uploaded artwork.
 
-On first launch, AirCard reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
+If the new data directory does not exist and the previous `~/Library/Application Support/AirCard/` directory is present, the service continues using that directory. Existing cards, artwork, and write history remain in place. An existing directory under the new name takes precedence; `--data-dir` always overrides automatic selection.
+
+On first launch, apple-wallet-card-skinner reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
 
 Use `--data-dir /path/to/data` to specify a separate data directory. The page makes no external network connections, uses no CDN, and does not upload images or device logs to the cloud. The local service validates Host, Origin, and session tokens; do not expose it to other devices through a reverse proxy.
 
@@ -79,11 +81,11 @@ Use `--data-dir /path/to/data` to specify a separate data directory. The page ma
 Python modules live in `backend/`, with `python3 -m backend` as the entrypoint. `backend/paths.py` locates the repository root used to find static pages and compiled native tools.
 
 - `web/`: the HTML / CSS / JavaScript interface, without a frontend framework.
-- `aircard_server.py`: the HTTP service, listening only on the loopback address.
+- `server.py`: the HTTP service, listening only on the loopback address.
 - `wallet_service.py`, `wallet_store.py`, `wallet_discovery.py`: device state, persistence, scanning, and task scheduling.
 - `wallet_catalog.py`: reads Wallet metadata on the Mac.
 - `image_processing.py`: image normalization using macOS `sips`.
-- `aircard_backend.py`, `apply_card_skin.py`, `card_assets.py`: artwork writing, asset generation, and cache cleanup.
+- `writer.py`, `apply_card_skin.py`, `card_assets.py`: artwork writing, asset generation, and cache cleanup.
 - `native/`: source code for native macOS device communication tools.
 
 ```sh

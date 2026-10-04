@@ -2,7 +2,7 @@
 
 ## Implemented scope
 
-AirCard keeps cards in saved discovery order and enriches their names from the
+apple-wallet-card-skinner keeps cards in saved discovery order and enriches their names from the
 Mac's existing Wallet cache. Card identity, selection and artwork references are
 stored by the full card ID, separately for each connected iPhone. Repeated
 scan events update the same item; identical display names do not merge cards.
@@ -31,7 +31,7 @@ the device's payment cache again:
   Wallet library. Their presence on the connected iPhone is not assumed.
 
 Neither the scanned count nor cache count is presented as the phone's total.
-Cache contents can be stale or incomplete. AirCard does not synchronize the
+Cache contents can be stale or incomplete. apple-wallet-card-skinner does not synchronize the
 phone's actual Wallet display order.
 
 ## Checking a missing card
@@ -54,8 +54,11 @@ phone's actual Wallet display order.
 ## Persistence and migration
 
 The Python service saves per-device records and artwork copies under
-`~/Library/Application Support/AirCard/`. On first launch it imports the old
-UserDefaults version-two records and legacy JSON lists, leaving their source
+`~/Library/Application Support/apple-wallet-card-skinner/`. If that directory does
+not exist, an existing `~/Library/Application Support/AirCard/` directory is reused
+without moving its contents. An existing directory under the new name takes
+precedence, and `--data-dir` overrides this selection. On first launch it imports
+the old UserDefaults version-two records and legacy JSON lists, leaving their source
 files untouched. Imported entries remain unconfirmed until scanned. An existing
 `state.json`, including empty device lists, is authoritative and prevents
 reimporting deleted entries. Available legacy images are copied into the new
@@ -67,8 +70,8 @@ ID. Changing an image makes that card eligible for incremental writing again.
 
 Saved IDs may remain after a card is removed from the phone, but they are not
 shown or eligible to flash unless a new scan matches their device cache again.
-AirCard does not use a cache based only on the phone model; it requires an exact
-live card-ID overlap first.
+apple-wallet-card-skinner does not use a cache based only on the phone model;
+it requires an exact live card-ID overlap first.
 
 ## Validation
 

@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from backend import aircard_backend
+from backend import writer
 from backend import apply_card_skin
 
 
@@ -22,11 +22,17 @@ PNG_1X1 = base64.b64decode(
 
 
 class CardFlashTests(unittest.TestCase):
-    def test_write_lock_rejects_competing_process_and_releases_after_exit(self) -> None:
+    def test_legacy_write_lock_rejects_competing_process_and_releases_after_exit(self) -> None:
+        # Independently reproduce the old version's path to catch accidental
+        # namespace changes that would let old and renamed apps write together.
         command = [sys.executable, "-u", "-c",
-                   "import sys; from backend.aircard_backend import _device_write_lock; "
-                   "lock = _device_write_lock(sys.argv[1]); lock.__enter__(); "
-                   "print('locked', flush=True); sys.stdin.readline(); lock.__exit__(None, None, None)",
+                   "import fcntl, hashlib, os, sys; from pathlib import Path; "
+                   "directory = Path('/tmp') / f'aircard-device-locks-{os.getuid()}'; "
+                   "directory.mkdir(mode=0o700, parents=True, exist_ok=True); "
+                   "name = hashlib.sha256(sys.argv[1].lower().encode('utf-8')).hexdigest() + '.lock'; "
+                   "stream = (directory / name).open('a+b'); "
+                   "fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB); "
+                   "print('locked', flush=True); sys.stdin.readline(); stream.close()",
                    DEVICE_ID]
         process = subprocess.Popen(command, cwd=Path(__file__).resolve().parents[2],
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -34,22 +40,22 @@ class CardFlashTests(unittest.TestCase):
         try:
             self.assertEqual(process.stdout.readline().strip(), "locked")
             output = io.StringIO()
-            with patch.object(aircard_backend, "_flash_unlocked", return_value=True) as write, redirect_stdout(output):
-                self.assertFalse(aircard_backend.cmd_flash(DEVICE_ID.lower(), CARD_ID, "unused.png"))
+            with patch.object(writer, "_flash_unlocked", return_value=True) as write, redirect_stdout(output):
+                self.assertFalse(writer.cmd_flash(DEVICE_ID.lower(), CARD_ID, "unused.png"))
             write.assert_not_called()
-            self.assertIn("Another AirCard process", json.loads(output.getvalue())["message"])
+            self.assertIn("Another apple-wallet-card-skinner process", json.loads(output.getvalue())["message"])
         finally:
             process.communicate("release\n", timeout=5)
-        with patch.object(aircard_backend, "_flash_unlocked", return_value=True) as write:
-            self.assertTrue(aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, "unused.png"))
+        with patch.object(writer, "_flash_unlocked", return_value=True) as write:
+            self.assertTrue(writer.cmd_flash(DEVICE_ID, CARD_ID, "unused.png"))
         write.assert_called_once()
 
     def test_backend_rejects_unsafe_device_or_card_identifiers_before_writing(self) -> None:
         pairs = [(value, CARD_ID) for value in ("../device", "--udid", "device/name", "device;command", "", "x" * 129)]
         pairs += [(DEVICE_ID, value) for value in ("../card", "a" * 20 + "/other", "a" * 20 + ".pkpass", "short", "x" * 65)]
         for udid, card_id in pairs:
-            with self.subTest(udid=udid, card_id=card_id), patch.object(aircard_backend, "_flash_unlocked") as write, redirect_stdout(io.StringIO()):
-                self.assertFalse(aircard_backend.cmd_flash(udid, card_id, "unused.png"))
+            with self.subTest(udid=udid, card_id=card_id), patch.object(writer, "_flash_unlocked") as write, redirect_stdout(io.StringIO()):
+                self.assertFalse(writer.cmd_flash(udid, card_id, "unused.png"))
                 write.assert_not_called()
 
     def test_cache_removal_moves_link_and_required_companion_payload(self) -> None:
@@ -80,12 +86,12 @@ class CardFlashTests(unittest.TestCase):
             remove_files = Mock(return_value=True)
 
             with (
-                patch.object(aircard_backend, "write_file", write_file),
-                patch.object(aircard_backend, "write_files_batch", Mock(return_value=False)),
-                patch.object(aircard_backend, "remove_files", remove_files),
+                patch.object(writer, "write_file", write_file),
+                patch.object(writer, "write_files_batch", Mock(return_value=False)),
+                patch.object(writer, "remove_files", remove_files),
                 redirect_stdout(io.StringIO()),
             ):
-                result = aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
+                result = writer.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
 
         self.assertTrue(result)
 
@@ -107,7 +113,7 @@ class CardFlashTests(unittest.TestCase):
 
         removals = [call.args for call in remove_files.call_args_list]
         for extension in (".cache", ".pkcache"):
-            self.assertIn((DEVICE_ID, f"/var/mobile/Library/Passes/Cards/{CARD_ID}{extension}", list(aircard_backend.CACHE_FILES)), removals)
+            self.assertIn((DEVICE_ID, f"/var/mobile/Library/Passes/Cards/{CARD_ID}{extension}", list(writer.CACHE_FILES)), removals)
 
     def test_flash_fails_when_wallet_cache_cannot_be_removed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -115,11 +121,11 @@ class CardFlashTests(unittest.TestCase):
             image_path.write_bytes(PNG_1X1)
             output = io.StringIO()
             with (
-                patch.object(aircard_backend, "write_files_batch", return_value=True),
-                patch.object(aircard_backend, "remove_files", side_effect=[True, False]),
+                patch.object(writer, "write_files_batch", return_value=True),
+                patch.object(writer, "remove_files", side_effect=[True, False]),
                 redirect_stdout(output),
             ):
-                result = aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
+                result = writer.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
         messages = [json.loads(line) for line in output.getvalue().splitlines()]
         self.assertFalse(result)
         self.assertEqual(messages[-1]["type"], "error")
@@ -134,12 +140,12 @@ class CardFlashTests(unittest.TestCase):
             output = io.StringIO()
 
             with (
-                patch.object(aircard_backend, "write_files_batch", Mock(return_value=False)),
-                patch.object(aircard_backend, "write_file", write_file),
-                patch.object(aircard_backend, "remove_files", Mock(return_value=True)),
+                patch.object(writer, "write_files_batch", Mock(return_value=False)),
+                patch.object(writer, "write_file", write_file),
+                patch.object(writer, "remove_files", Mock(return_value=True)),
                 redirect_stdout(output),
             ):
-                result = aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
+                result = writer.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
 
         messages = [json.loads(line) for line in output.getvalue().splitlines()]
         self.assertFalse(result)
@@ -165,11 +171,11 @@ class CardFlashTests(unittest.TestCase):
                 return True
 
             with (
-                patch.object(aircard_backend, "write_files_batch", side_effect=batch),
-                patch.object(aircard_backend, "remove_files", return_value=True),
+                patch.object(writer, "write_files_batch", side_effect=batch),
+                patch.object(writer, "remove_files", return_value=True),
                 redirect_stdout(output),
             ):
-                result = aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
+                result = writer.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
 
         messages = [json.loads(line) for line in output.getvalue().splitlines()]
         written = [
@@ -188,12 +194,12 @@ class CardFlashTests(unittest.TestCase):
             image_path.write_bytes(PNG_1X1)
             output = io.StringIO()
             with (
-                patch.object(aircard_backend, "write_files_batch", return_value=False),
-                patch.object(aircard_backend, "write_file", return_value=True),
-                patch.object(aircard_backend, "remove_files", return_value=True),
+                patch.object(writer, "write_files_batch", return_value=False),
+                patch.object(writer, "write_file", return_value=True),
+                patch.object(writer, "remove_files", return_value=True),
                 redirect_stdout(output),
             ):
-                result = aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
+                result = writer.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
 
         messages = [json.loads(line) for line in output.getvalue().splitlines()]
         fallback = [
@@ -215,15 +221,15 @@ class CardFlashTests(unittest.TestCase):
             output = io.StringIO()
 
             with (
-                patch.object(aircard_backend, "write_file", write_file),
+                patch.object(writer, "write_file", write_file),
                 patch.object(
-                    aircard_backend,
+                    writer,
                     "build_card_assets",
                     side_effect=subprocess.CalledProcessError(1, ["sips"]),
                 ),
                 redirect_stdout(output),
             ):
-                result = aircard_backend.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
+                result = writer.cmd_flash(DEVICE_ID, CARD_ID, str(image_path))
 
         messages = [json.loads(line) for line in output.getvalue().splitlines()]
         self.assertFalse(result)
