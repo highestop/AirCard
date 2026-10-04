@@ -1,4 +1,4 @@
-# apple-wallet-card-skinner
+# Apple Wallet Card Skinner
 
 A personal tool for customizing Apple Wallet card artwork. The interface runs in a browser, while a Python service and native USB tools on the Mac handle device operations:
 
