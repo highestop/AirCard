@@ -161,10 +161,10 @@ test('input signatures accept supported raster formats and reject renamed SVG', 
 
 test('export filenames keep a useful stem and bound long or unsafe names', () => {
   const { safeFileName } = harness().api;
-  assert.equal(safeFileName('my.photo.png'), 'my.photo-AppleWalletCardSkinner-1536x969.png');
-  assert.equal(safeFileName('.png'), 'artwork-AppleWalletCardSkinner-1536x969.png');
+  assert.equal(safeFileName('my.photo.png'), 'my.photo-Apple Wallet Card Skinner-1536x969.png');
+  assert.equal(safeFileName('.png'), 'artwork-Apple Wallet Card Skinner-1536x969.png');
   assert.ok(!/[\x00-\x1f\x7f/\\:*?"<>|]/.test(safeFileName('foo/bar:*?\0.png')));
-  assert.equal(Array.from(safeFileName('图'.repeat(300) + '.png').split('-AppleWalletCardSkinner')[0]).length, 64);
+  assert.equal(Array.from(safeFileName('图'.repeat(300) + '.png').split('-Apple Wallet Card Skinner')[0]).length, 64);
 });
 
 test('empty state disables editing and export in the Chinese interface', () => {
@@ -278,7 +278,7 @@ test('PNG download exports the current canvas and remains independent of the hos
   h.state.zoom = 2;
   await h.elements.get('export-button').handlers.click();
   assert.match(html, /canvas id="preview" width="1536" height="969"/);
-  assert.equal(h.links[0].download, 'family-AppleWalletCardSkinner-1536x969.png');
+  assert.equal(h.links[0].download, 'family-Apple Wallet Card Skinner-1536x969.png');
   assert.equal(h.links[0].clicked, true);
   assert.deepEqual(h.revoked, ['blob:fixture-export']);
   assert.equal(h.messages.length, 0);

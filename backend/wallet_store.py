@@ -10,7 +10,7 @@ import plistlib
 import tempfile
 from pathlib import Path
 
-from . import APP_ID, APP_NAME
+from . import APP_DATA_DIR_NAME, APP_ID, APP_NAME
 from .wallet_discovery import unique_records, valid_card_id
 
 _PREFIX = "mak5er.aircard.wallet.v2."
@@ -18,7 +18,7 @@ _PREFIX = "mak5er.aircard.wallet.v2."
 
 def default_data_dir() -> Path:
     support = Path.home() / "Library/Application Support"
-    current = support / APP_NAME
+    current = support / APP_DATA_DIR_NAME
     # Reuse existing artwork and state in place; do not copy or move user files.
     if current.exists():
         return current

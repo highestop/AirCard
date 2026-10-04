@@ -2,7 +2,7 @@
 
 ## Implemented scope
 
-AppleWalletCardSkinner keeps cards in saved discovery order and enriches their names from the
+Apple Wallet Card Skinner keeps cards in saved discovery order and enriches their names from the
 Mac's existing Wallet cache. Card identity, selection and artwork references are
 stored by the full card ID, separately for each connected iPhone. Repeated
 scan events update the same item; identical display names do not merge cards.
@@ -39,7 +39,7 @@ card. Manually saved IDs retain the same scan requirement; adding another log
 format does not bypass device or card verification.
 
 Neither the scanned count nor cache count is presented as the phone's total.
-Cache contents can be stale or incomplete. AppleWalletCardSkinner does not synchronize the
+Cache contents can be stale or incomplete. Apple Wallet Card Skinner does not synchronize the
 phone's actual Wallet display order.
 
 ## Checking a missing card
@@ -63,6 +63,7 @@ phone's actual Wallet display order.
 
 The Python service saves per-device records and artwork copies under
 `~/Library/Application Support/AppleWalletCardSkinner/` for new installations.
+This technical path stays unchanged when the display name changes.
 If that directory does not exist, the service first reuses an existing
 `~/Library/Application Support/apple-wallet-card-skinner/` directory, then an
 existing `~/Library/Application Support/AirCard/` directory, without moving files.
@@ -80,7 +81,7 @@ ID. Changing an image makes that card eligible for incremental writing again.
 
 Saved IDs may remain after a card is removed from the phone, but they are not
 shown or eligible to flash unless a new scan matches their device cache again.
-AppleWalletCardSkinner does not use a cache based only on the phone model;
+Apple Wallet Card Skinner does not use a cache based only on the phone model;
 it requires an exact live card-ID overlap first.
 
 ## Validation

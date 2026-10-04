@@ -1,4 +1,4 @@
-"""Loopback-only HTTP transport for AppleWalletCardSkinner's local Wallet controller."""
+"""Loopback-only HTTP transport for Apple Wallet Card Skinner's local Wallet controller."""
 from __future__ import annotations
 
 import argparse
@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import APP_NAME
+from . import APP_DATA_DIR_NAME, APP_NAME
 from .paths import ROOT
 
 MAX_IMAGE_BYTES = 30 * 1024 * 1024
@@ -39,7 +39,7 @@ class LocalServer(ThreadingHTTPServer):
 
 
 class LocalRequestHandler(BaseHTTPRequestHandler):
-    server_version = APP_NAME
+    server_version = APP_DATA_DIR_NAME
     sys_version = ""
 
     def setup(self):
