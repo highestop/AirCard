@@ -15,13 +15,13 @@ import threading
 import time
 from pathlib import Path
 
-from . import APP_DATA_DIR_NAME, APP_ID, APP_NAME
+from . import APP_ID, APP_NAME
 from .paths import ROOT
 from .wallet_discovery import activation_ids, card_ids, is_wallet_line, valid_card_id
 from .wallet_store import WalletStore
 
 SCANNER_STOP_TIMEOUT = 5
-SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", f"{APP_DATA_DIR_NAME} scanner: ",
+SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", "Apple Wallet Card Skinner scanner: ",
                     f"{APP_ID} scanner: ", "AirCard scanner: ")
 
 

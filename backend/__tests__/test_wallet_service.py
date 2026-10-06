@@ -227,7 +227,7 @@ class WalletServiceTests(unittest.TestCase):
     def test_current_and_legacy_native_scanner_status_prefixes_are_understood(self):
         process = self.scan()
         for prefix, message in ((f"{APP_NAME} scanner: ", "Current helper ready"),
-                                (f"{APP_DATA_DIR_NAME} scanner: ", "Previous compact helper ready"),
+                                ("Apple Wallet Card Skinner scanner: ", "Previous spaced helper ready"),
                                 (f"{APP_ID} scanner: ", "Previous slug helper ready"),
                                 ("AirCard scanner: ", "Previously built helper ready")):
             with self.subTest(prefix=prefix):
