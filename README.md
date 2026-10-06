@@ -1,4 +1,4 @@
-# AppleWalletCardSkinner
+# Apple Wallet Card Skinner
 
 A personal tool for customizing Apple Wallet card artwork. The interface runs in a browser, while a Python service and native USB tools on the Mac handle device operations:
 
@@ -81,8 +81,9 @@ See [card identification and diagnostics](docs/wallet-discovery.md) and [connect
 
 ## Local data
 
-The product, GitHub repository, and clone directory are named
-**AppleWalletCardSkinner**. New installations keep the stable data path
+The app and product display name is **Apple Wallet Card Skinner**. The project
+slug is `AppleWalletCardSkinner`, used for the GitHub repository, clone directory,
+and exported filenames. New installations keep the stable data path
 `~/Library/Application Support/AppleWalletCardSkinner/`:
 
 - `state.json`: cards, selection state, image references, and successful-write signatures for each iPhone.
@@ -95,7 +96,7 @@ cards, artwork, and write history remain in their current directory. An existing
 `AppleWalletCardSkinner` directory takes precedence, even when empty.
 `--data-dir` always overrides automatic selection.
 
-On first launch, AppleWalletCardSkinner reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
+On first launch, Apple Wallet Card Skinner reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
 
 Use `--data-dir /path/to/data` to specify a separate data directory. The page makes no external network connections, uses no CDN, and does not upload images or device logs to the cloud. The local service validates Host, Origin, and session tokens; do not expose it to other devices through a reverse proxy.
 

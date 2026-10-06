@@ -256,7 +256,7 @@ static int StreamDeviceLogs(AMDServiceConnectionRef connection) {
     };
     if (AMDServiceConnectionSendMessage(connection,
             (__bridge CFDictionaryRef)request, kCFPropertyListBinaryFormat_v1_0) != 0) {
-        fprintf(stderr, "AppleWalletCardSkinner scanner: Could not request device log streaming.\n");
+        fprintf(stderr, "Apple Wallet Card Skinner scanner: Could not request device log streaming.\n");
         return 2;
     }
 
@@ -269,18 +269,18 @@ static int StreamDeviceLogs(AMDServiceConnectionRef connection) {
               options:NSPropertyListImmutable format:NULL error:NULL] : nil;
     if (![status isKindOfClass:NSDictionary.class] ||
         ![status[@"Status"] isEqual:@"RequestSuccessful"]) {
-        fprintf(stderr, "AppleWalletCardSkinner scanner: %s\n",
+        fprintf(stderr, "Apple Wallet Card Skinner scanner: %s\n",
                 (error ?: @"The device refused to start log streaming.").UTF8String);
         return 2;
     }
 
-    fprintf(stderr, "AppleWalletCardSkinner scanner: Connected to the unified device log stream.\n");
+    fprintf(stderr, "Apple Wallet Card Skinner scanner: Connected to the unified device log stream.\n");
     while (YES) {
         @autoreleasepool {
             NSData *record = WalletTraceReadFrame(AMDServiceConnectionReceive,
                                                   connection, &type, &error);
             if (!record) {
-                fprintf(stderr, "AppleWalletCardSkinner scanner: %s\n", error.UTF8String);
+                fprintf(stderr, "Apple Wallet Card Skinner scanner: %s\n", error.UTF8String);
                 return 2;
             }
             if (type != 2) continue;
@@ -296,17 +296,17 @@ static int StreamDeviceLogs(AMDServiceConnectionRef connection) {
 
 static int RunSyslog(void) {
     if (FindTarget() != 0 || !TargetDevice) {
-        fprintf(stderr, "AppleWalletCardSkinner scanner: iPhone not found. Reconnect it via USB.\n");
+        fprintf(stderr, "Apple Wallet Card Skinner scanner: iPhone not found. Reconnect it via USB.\n");
         return 2;
     }
     AMDeviceRef device = TargetDevice;
     if (AMDeviceConnect(device) != 0) {
-        fprintf(stderr, "AppleWalletCardSkinner scanner: Could not connect to the iPhone.\n");
+        fprintf(stderr, "Apple Wallet Card Skinner scanner: Could not connect to the iPhone.\n");
         return 2;
     }
     if (!AMDeviceIsPaired(device)) AMDevicePair(device);
     if (AMDeviceValidatePairing(device) != 0 || AMDeviceStartSession(device) != 0) {
-        fprintf(stderr, "AppleWalletCardSkinner scanner: Unlock the iPhone and trust this Mac, then retry.\n");
+        fprintf(stderr, "Apple Wallet Card Skinner scanner: Unlock the iPhone and trust this Mac, then retry.\n");
         AMDeviceDisconnect(device);
         return 2;
     }
@@ -315,7 +315,7 @@ static int RunSyslog(void) {
     if (AMDeviceSecureStartService(
             device, CFSTR("com.apple.os_trace_relay"), NULL, &connection) != 0 ||
         !connection) {
-        fprintf(stderr, "AppleWalletCardSkinner scanner: Could not open the device log service. Unlock the iPhone and retry.\n");
+        fprintf(stderr, "Apple Wallet Card Skinner scanner: Could not open the device log service. Unlock the iPhone and retry.\n");
         AMDeviceStopSession(device);
         AMDeviceDisconnect(device);
         return 2;

@@ -21,7 +21,7 @@ from .wallet_discovery import activation_ids, card_ids, is_wallet_line, valid_ca
 from .wallet_store import WalletStore
 
 SCANNER_STOP_TIMEOUT = 5
-SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", "Apple Wallet Card Skinner scanner: ",
+SCANNER_PREFIXES = (f"{APP_NAME} scanner: ", "AppleWalletCardSkinner scanner: ",
                     f"{APP_ID} scanner: ", "AirCard scanner: ")
 
 

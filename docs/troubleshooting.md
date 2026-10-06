@@ -68,7 +68,7 @@ lengths, truncated records, and multiline paths.
 
 - **A payment activation ID is available, but no card file ID:** These are
   different identifiers. The Mac's Wallet cache must provide an exact mapping.
-  Without one, AppleWalletCardSkinner cannot guess from a name, card-number suffix, or card
+  Without one, Apple Wallet Card Skinner cannot guess from a name, card-number suffix, or card
   position.
 - **A log field contains `<private>`:** The hidden content cannot be recovered
   from the current log.
