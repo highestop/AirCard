@@ -1,4 +1,4 @@
-"""Loopback-only HTTP transport for Apple Wallet Card Skinner's local Wallet controller."""
+"""Loopback-only HTTP transport for AppleWalletCardSkinner's local Wallet controller."""
 from __future__ import annotations
 
 import argparse
