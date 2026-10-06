@@ -1,4 +1,4 @@
-# AppleWalletCardSkinner repository workflow
+# Apple Wallet Card Skinner repository workflow
 
 ## Project language
 
@@ -10,7 +10,8 @@
 
 ## Personal fork policy
 
-- Use `AppleWalletCardSkinner` as the product display name in documentation, page titles, interface branding, accessible labels, CLI output, logs, and exported filenames. Use `AppleWalletCardSkinner` as the GitHub repository name and clone-directory name, with `origin` pointing to `https://github.com/highestop/AppleWalletCardSkinner.git`.
+- Use `Apple Wallet Card Skinner` as the app and product display name in documentation prose and headings, page titles, interface branding, accessible labels, CLI output, and logs.
+- Use `AppleWalletCardSkinner` as the project slug in the GitHub repository name, clone-directory name, URLs, and exported filenames. Keep `origin` pointing to `https://github.com/highestop/AppleWalletCardSkinner.git`. Preserve the slug in commands and technical path examples; do not replace it with the display name.
 - Keep `~/Library/Application Support/AppleWalletCardSkinner/` as the stable technical data path for new installations, independently of the display name. If it does not exist, reuse an existing `apple-wallet-card-skinner` data directory first, then `AirCard`, without moving files. An explicit `--data-dir` always wins.
 - Preserve technical compatibility identifiers when changing display names: saved-data keys, legacy directory lookup, device-lock namespaces, HTTP token headers, and the `apple-wallet-card-skinner-artwork` message channel. Historical scanner prefixes must remain readable.
 - This fork is for personal customization. Keep the app and user-facing documentation free of donation prompts, social links, contributor showcases, and community participation calls.
