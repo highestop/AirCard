@@ -2,30 +2,29 @@
 
 A standalone macOS app for customizing Apple Wallet card artwork. The main
 interface and crop editor use native SwiftUI / AppKit views in Simplified Chinese.
-Double-click **Apple Wallet Card Skinner.app** to run it. The app includes its
-Python runtime and USB helpers; it needs no browser, terminal, installed Python,
-or network service.
+Double-click **Apple Wallet Card Skinner.app** to run it. Its Swift service and
+Objective-C USB helpers use macOS system frameworks. Building and running the
+app require no Python, Homebrew, browser, or third-party packages.
 
 ```text
-Native macOS interface → private stdin/stdout pipes → bundled Python service → USB helpers → iPhone
+Native macOS interface → private stdin/stdout pipes → native Swift service → Objective-C USB helpers → iPhone
 ```
 
 ## Requirements
 
-- The native source targets macOS 14 or newer. The finished bundle declares
-  the highest minimum OS version required by its bundled runtime and libraries,
-  which can be higher than the source target and varies with each build.
-  Build on Apple Silicon for an Apple Silicon app, or on Intel for an Intel
-  app. The USB helpers are universal; the app and Python match the build CPU.
+- macOS 14 or newer. Build on Apple Silicon for an Apple Silicon app, or on
+  Intel for an Intel app. The USB helpers are universal; the interface and
+  Swift service match the build CPU.
 - An iPhone connected over USB, unlocked, and configured to trust this Mac.
 - Artwork writing uses the existing iOS 18+ implementation. Private device
   interfaces and Wallet logs can change between OS releases; actual artwork
   writing still needs validation on the target iPhone.
 
 Building from source additionally requires **Xcode** with its macOS SDK and
-Swift compiler, plus a **framework-based Python 3.9+** installation, such as
-Homebrew or python.org Python. No pip packages are required. These development
-dependencies are not required on the Mac that runs the finished app.
+Swift compiler. Open Xcode once to complete its setup and review any license
+agreement. If `xcrun` points to Command Line Tools instead of Xcode, select your
+installation with `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`.
+Xcode is not required on the Mac that runs the finished app.
 
 ## Build and launch
 
@@ -42,14 +41,14 @@ checkout paths or Homebrew libraries are needed at runtime. The app handles
 starting and stopping its private backend. Quitting, including closing the
 last window, waits for the current card's native write cleanup before exiting.
 
-For a separate local data directory, quit the current instance first:
+For a separate local data directory outside the app bundle, quit the current instance first:
 
 ```sh
 open "build/Apple Wallet Card Skinner.app" --args --data-dir /path/to/data
 ```
 
-The build signs nested runtime binaries and helpers first, then the Python
-framework and outer app, using **ad hoc local signatures**. No developer
+The build signs the three native service/helper binaries and outer app using
+**ad hoc local signatures**. No developer
 certificate is required for local use. This product is not notarized;
 Developer ID signing and notarization would be separate steps for public
 distribution. App Sandbox is disabled because the service uses private USB
@@ -64,10 +63,8 @@ or configuration from the original developer's Mac is needed. A configured
 macOS CI runner can also build the source. Windows and Linux are not supported
 build hosts.
 
-Generated apps, embedded Python runtimes, native binaries, icons, build caches,
-and local build diagnostics stay under the ignored `build/` directory. The
-runtime version, CPU architecture, and computed minimum macOS version belong
-to each generated bundle. Local ad hoc signing uses no Apple ID, Developer
+Generated apps, native binaries, icons, build caches, and local build diagnostics
+stay under the ignored `build/` directory. Local ad hoc signing uses no Apple ID, Developer
 Team ID, certificate, or private key. Generated app bundles and other build
 artifacts are not published to Git or GitHub Releases.
 
@@ -147,15 +144,15 @@ remain local; only the parent app can access its inherited backend pipes.
 ## Repository and validation
 
 - `macos/`: native window, card management, diagnostics, logs, and crop editor.
-- `backend/desktop.py`: bounded JSON pipe transport, with graceful shutdown.
-- Other `backend/` modules: device verification, persistence, image processing,
-  scanning, and artwork writing.
+- `service/`: native Swift device verification, persistence, Wallet cache
+  decoding, log scanning, ZIP/PDF generation, write transactions, and bounded
+  JSON pipe transport with graceful shutdown.
 - `native/`: Objective-C USB helpers, using the system's private frameworks.
-- `scripts/build_macos_app.py`: runtime relocation, bundle assembly, and signing.
-- `scripts/test_macos_app.py`: signed-product checks after moving the app outside
-  the checkout and removing Homebrew from its runtime PATH.
-- `web/` and `backend/server.py`: retained compatibility source and tests;
-  the native app neither bundles nor loads the browser interface.
+- `scripts/build_macos_app.sh`: native compilation, bundle assembly, and signing.
+- `service/__tests__/ProductTests.swift`: signed-product checks after moving
+  the app outside the checkout and using only the system executable path.
+- `backend/` and `web/`: legacy reference implementations and optional
+  regression tests; the native app neither bundles nor executes these files.
 
 ```sh
 make test
@@ -163,12 +160,14 @@ make app
 make test-app
 ```
 
-`make test` includes backend and native-helper suites, compatibility web and
-integration checks, and native crop/PNG/EXIF tests. Node.js is needed only for
-compatibility web tests. `make test-app` checks the relocated runtime, private
-pipe protocol, rejection of unauthorized writes, and unchanged signatures
-after running. Tests use synthetic data and do not write to a real iPhone.
-The final appearance on a phone requires a real write and visual check.
+`make test` runs native service, USB-helper, and crop/PNG/EXIF tests using Xcode
+alone. `make test-app` checks the native-only bundle and system library
+dependencies, relocated execution, live private pipes, rejection of
+unauthorized writes, and unchanged signatures after running. Tests use
+synthetic data and do not write to a real iPhone. The final appearance on a
+phone requires a real write and visual check. `make test-legacy` optionally
+runs the retained Python and browser suites; only that target needs Python
+and Node.js.
 
-Required project and bundled-runtime license notices are preserved in the
-app's `Contents/Resources/ThirdPartyNotices/`.
+The required project license notice is preserved in the app's
+`Contents/Resources/ThirdPartyNotices/`.

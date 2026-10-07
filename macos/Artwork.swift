@@ -22,7 +22,14 @@ enum Artwork {
         guard size > 0, size <= 30 * 1024 * 1024 else {
             throw DesktopError(message: "请选择不超过 30 MiB 的有效图片。")
         }
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        return try decode(Data(contentsOf: url))
+    }
+
+    static func decode(_ data: Data) throws -> NSImage {
+        guard !data.isEmpty, data.count <= 30 * 1024 * 1024 else {
+            throw DesktopError(message: "请选择不超过 30 MiB 的有效图片。")
+        }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int,
               let height = properties[kCGImagePropertyPixelHeight] as? Int,

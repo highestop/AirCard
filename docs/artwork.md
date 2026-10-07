@@ -36,8 +36,8 @@ unsaved composition changes.
   orientation or source text metadata, preventing a second rotation.
 - Export dimensions are independent of window size and Retina screen density.
 - Enlarging cannot restore missing detail; the editor warns about upscaling.
-- Animated images use their first frame. Exact interpolation can differ from
-  macOS sips, which normalizes images in the Python service.
+- Animated images use their first frame. The interface and native service share
+  the same ImageIO / Core Graphics decoding and rendering implementation.
 - The preview does not simulate Wallet's overlays or on-device scaling. Leave
   margins around important content and check the actual phone.
 - Invalid input preserves the valid composition already loaded.
@@ -46,7 +46,7 @@ unsaved composition changes.
 
 ```sh
 make test-macos
-make test-backend
+make test-service
 ```
 
 Native tests verify crop edge selection, fixed output size, zoom boundaries,

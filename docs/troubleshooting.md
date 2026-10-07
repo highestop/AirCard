@@ -3,9 +3,9 @@
 ## Startup or device-tool errors
 
 `make app` and `./start.sh` print build errors in the terminal. Building the
-native interface requires Xcode with its macOS SDK and Swift compiler, plus a
-framework-based Python installation. The finished app includes its runtime
-and helpers and does not need those development tools to run. If Xcode reports
+native interface and service requires Xcode with its macOS SDK and Swift compiler.
+No Python or Homebrew installation is required. The finished app includes its
+native service and helpers and does not need Xcode to run. If Xcode reports
 a license problem, open Xcode and review the agreement before retrying.
 
 If the app reports that its local service exited, open **Operation logs** for
@@ -34,8 +34,8 @@ Native device discovery uses the USBMux transport through
 `AMDeviceNotificationSubscribeWithOptions`. Testing on macOS 27 showed that
 also enabling `NotificationOptionEnableRemoteXPC` caused a paired USB iPhone to
 disappear from discovery, so the current implementation leaves that option
-disabled. `native/__tests__/test_device_discovery.py` and its native tests guard
-against reintroducing this issue.
+disabled. `make test-native` guards against reintroducing this issue using the
+native discovery and target-resolution tests.
 
 ## Device shown after unplugging USB
 

@@ -1,10 +1,5 @@
 import Foundation
 
-struct DesktopError: LocalizedError {
-    let message: String
-    var errorDescription: String? { message }
-}
-
 @MainActor
 final class BackendClient {
     private var process: Process?
@@ -25,15 +20,14 @@ final class BackendClient {
             throw DesktopError(message: "无法找到应用资源。")
         }
         let contents = resources.deletingLastPathComponent()
-        let executable = contents.appendingPathComponent("MacOS/python3")
-        let runtime = contents.appendingPathComponent("Frameworks/Python.framework/Versions/Current")
+        let executable = contents.appendingPathComponent("Helpers/wallet_service")
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
-            throw DesktopError(message: "应用内置运行时缺失，请重新构建应用。")
+            throw DesktopError(message: "应用内置服务缺失，请重新构建应用。")
         }
         let child = Process()
         child.executableURL = executable
         child.currentDirectoryURL = resources
-        child.arguments = ["-s", "-B", "-u", "-m", "backend.desktop"]
+        child.arguments = []
         if let index = CommandLine.arguments.firstIndex(of: "--data-dir"),
            CommandLine.arguments.indices.contains(index + 1) {
             child.arguments?.append(contentsOf: ["--data-dir", CommandLine.arguments[index + 1]])
@@ -42,11 +36,6 @@ final class BackendClient {
             !$0.key.hasPrefix("PYTHON") && !$0.key.hasPrefix("DYLD_") && !$0.key.hasPrefix("LD_") && $0.key != "__PYVENV_LAUNCHER__"
         }
         environment["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
-        environment["PYTHONHOME"] = runtime.path
-        environment["PYTHONPATH"] = resources.path
-        environment["PYTHONNOUSERSITE"] = "1"
-        environment["PYTHONDONTWRITEBYTECODE"] = "1"
-        environment["PYTHONUNBUFFERED"] = "1"
         child.environment = environment
         let incoming = Pipe(), outgoing = Pipe(), stderr = Pipe()
         child.standardInput = incoming
@@ -153,7 +142,7 @@ final class BackendClient {
     }
 
     func closeInput() {
-        // EOF asks Python to close the service and finish any native write cleanup.
+        // EOF asks the native service to finish write cleanup before exiting.
         try? input?.close()
         input = nil
     }
