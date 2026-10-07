@@ -4,6 +4,36 @@ __pycache__/
 *.pyo
 *.swp
 *~
+# Generated products, runtimes, tests, and local build diagnostics.
 build/
+/dist/
+*.app/
+*.dSYM/
+*.xcarchive/
+*.xcresult/
+*.dmg
+*.pkg
+/DerivedData/
+xcuserdata/
+*.xcuserstate
+*.log
+
+# Local data overrides; the default data directory is outside the checkout.
+/local-data/
+/state.json
+/artwork/
+
+# Local environment and signing credentials.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.mobileprovision
+*.provisionprofile
+
 .tmp/
 .serena/

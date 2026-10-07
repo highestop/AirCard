@@ -2,5 +2,5 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-make all
-exec python3 -m backend "$@"
+make app
+exec open "build/Apple Wallet Card Skinner.app" --args "$@"

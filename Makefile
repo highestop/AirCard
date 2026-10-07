@@ -7,14 +7,17 @@ FOUNDATION := -framework Foundation -framework CoreFoundation
 MOBILEDEVICE := /System/Library/PrivateFrameworks/MobileDevice.framework/MobileDevice
 AIRTRAFFIC := /System/Library/PrivateFrameworks/AirTrafficHost.framework/AirTrafficHost
 
-.PHONY: all clean run test test-backend test-native test-web test-integration
+.PHONY: all app clean run test test-backend test-native test-web test-integration test-macos test-app
 
 all: build/device_helper build/airtraffic_host
 
-run: all
-	$(PYTHON) -m backend
+app:
+	$(PYTHON) scripts/build_macos_app.py
 
-test: test-backend test-native test-web test-integration
+run: app
+	open "build/Apple Wallet Card Skinner.app"
+
+test: test-backend test-native test-web test-integration test-macos
 
 test-backend:
 	$(PYTHON) -m unittest discover -s backend/__tests__ -t . -v
@@ -30,6 +33,14 @@ test-web:
 
 test-integration:
 	$(PYTHON) -m unittest discover -s __tests__/integration -t . -v
+
+test-macos: | build
+	mkdir -p build/macos
+	xcrun swiftc -swift-version 5 -parse-as-library -module-cache-path build/macos/module-cache macos/BackendClient.swift macos/Artwork.swift macos/__tests__/ArtworkTests.swift -o build/macos/artwork-tests
+	build/macos/artwork-tests
+
+test-app:
+	$(PYTHON) scripts/test_macos_app.py "build/Apple Wallet Card Skinner.app"
 
 build:
 	mkdir -p $@

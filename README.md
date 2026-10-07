@@ -1,130 +1,174 @@
 # Apple Wallet Card Skinner
 
-A personal tool for customizing Apple Wallet card artwork. The interface runs in a browser, while a Python service and native USB tools on the Mac handle device operations:
+A standalone macOS app for customizing Apple Wallet card artwork. The main
+interface and crop editor use native SwiftUI / AppKit views in Simplified Chinese.
+Double-click **Apple Wallet Card Skinner.app** to run it. The app includes its
+Python runtime and USB helpers; it needs no browser, terminal, installed Python,
+or network service.
 
 ```text
-Browser → http://127.0.0.1:8765 → Python → native macOS device tools → iPhone over USB
+Native macOS interface → private stdin/stdout pipes → bundled Python service → USB helpers → iPhone
 ```
 
 ## Requirements
 
-- **A Mac running macOS 14 or newer**, with Apple Silicon or Intel. The native tools depend on the private MobileDevice / AirTrafficHost frameworks in macOS and cannot run directly on Windows or Linux.
-- **Python 3.9+**. No pip packages are required.
-- **Xcode Command Line Tools** to compile the two Objective-C device tools. A full Xcode installation is unnecessary. Run `xcode-select --install` if the command line tools are missing.
-- A modern browser and an iPhone connected over USB, unlocked, and configured to trust this Mac.
+- The native source targets macOS 14 or newer. The finished bundle declares
+  the highest minimum OS version required by its bundled runtime and libraries,
+  which can be higher than the source target and varies with each build.
+  Build on Apple Silicon for an Apple Silicon app, or on Intel for an Intel
+  app. The USB helpers are universal; the app and Python match the build CPU.
+- An iPhone connected over USB, unlocked, and configured to trust this Mac.
+- Artwork writing uses the existing iOS 18+ implementation. Private device
+  interfaces and Wallet logs can change between OS releases; actual artwork
+  writing still needs validation on the target iPhone.
 
-Artwork writing uses the existing iOS 18+ implementation. Private device interfaces and Wallet logs can change between system versions; compatibility still depends on testing with the actual device.
+Building from source additionally requires **Xcode** with its macOS SDK and
+Swift compiler, plus a **framework-based Python 3.9+** installation, such as
+Homebrew or python.org Python. No pip packages are required. These development
+dependencies are not required on the Mac that runs the finished app.
 
-## Start
+## Build and launch
 
 ```sh
 git clone https://github.com/highestop/AppleWalletCardSkinner.git
 cd AppleWalletCardSkinner
-./start.sh
+make app
+open "build/Apple Wallet Card Skinner.app"
 ```
 
-The script builds `build/device_helper` and `build/airtraffic_host` as needed, starts the local service, and opens the browser. Keep the terminal running. Press `Ctrl+C` to stop the service; an active write finishes cleanup for the current card before the service exits.
+`./start.sh` builds and opens the same app. Quit the app before rebuilding.
+You can move the finished bundle to Applications or another directory; no
+checkout paths or Homebrew libraries are needed at runtime. The app handles
+starting and stopping its private backend. Quitting, including closing the
+last window, waits for the current card's native write cleanup before exiting.
 
-After pulling updates, restart with `./start.sh` so changes to native helpers
-are rebuilt along with the Python service. Once the native tools are current,
-you can also start the service directly:
+For a separate local data directory, quit the current instance first:
 
 ```sh
-python3 -m backend
-# Choose a port without opening the browser automatically.
-python3 -m backend --port 8766 --no-browser
+open "build/Apple Wallet Card Skinner.app" --args --data-dir /path/to/data
 ```
 
-The service listens only on `127.0.0.1`. Use the full address printed in the terminal. Refreshing or closing the page does not interrupt background operations; reopen the same address to check their status. Only one service instance can use a given data directory. If it is already running, open its existing page. Choose another port if a different program is using the requested port.
+The build signs nested runtime binaries and helpers first, then the Python
+framework and outer app, using **ad hoc local signatures**. No developer
+certificate is required for local use. This product is not notarized;
+Developer ID signing and notarization would be separate steps for public
+distribution. App Sandbox is disabled because the service uses private USB
+frameworks and reads the Mac's Wallet cache.
+
+## Source-only publication
+
+The public repository contains the native macOS source, build scripts, license
+notices, documentation, and synthetic test fixtures. Build on any compatible
+Mac with the development dependencies listed above; no account, certificate,
+or configuration from the original developer's Mac is needed. A configured
+macOS CI runner can also build the source. Windows and Linux are not supported
+build hosts.
+
+Generated apps, embedded Python runtimes, native binaries, icons, build caches,
+and local build diagnostics stay under the ignored `build/` directory. The
+runtime version, CPU architecture, and computed minimum macOS version belong
+to each generated bundle. Local ad hoc signing uses no Apple ID, Developer
+Team ID, certificate, or private key. Generated app bundles and other build
+artifacts are not published to Git or GitHub Releases.
+
+Keep device state, private artwork, and captured device logs outside the
+checkout. If a checkout-local `--data-dir` is useful, use the ignored
+`local-data/` directory. `.gitignore` also excludes app bundles written to
+other locations, Xcode user state, local environment files, and signing
+credentials. Ignore rules do not remove previously tracked files or erase
+Git history; review the staged files before publication.
+
+Publishing outside the Mac App Store is possible with Developer ID signing
+and notarization, as described in [Apple's macOS distribution documentation](https://developer.apple.com/macos/distribution/).
+This project's documented workflow is to build from source for local use.
 
 ## Usage
 
-1. Connect and unlock the iPhone, trust the Mac, and select the device in the page. The selector distinguishes a ready USB connection from wireless discovery, an unavailable session, and disconnection. Only a ready USB connection enables scanning and writing. Device presence updates automatically; use refresh to retry a session check after unlocking or trusting the Mac.
-2. Start a card scan. Open cards in Wallet on the iPhone, or double-click the side button, authenticate, and switch between payment cards.
-3. Cards confirmed during the current scan appear in the page. Choose or drop an image for each card, or select several cards and assign the same image to all of them.
-4. Stop scanning, check the selected cards and previews, then use the write button.
-5. After writing finishes, force-quit and reopen Wallet on the iPhone to see the result.
+1. Connect and unlock the iPhone, trust the Mac, and select it in the app.
+   Wi-Fi discovery, an unavailable session, and disconnection are distinct
+   from a ready USB connection. Only a ready USB connection enables scanning
+   and writing. Use refresh to retry after unlocking or establishing trust.
+2. Start a card scan. Open cards in Wallet on the iPhone, or double-click the
+   side button, authenticate, and switch between payment cards.
+3. Cards confirmed in the current scan appear in the app. Choose or drop an
+   image for a card, or select several cards and assign one image to all.
+4. Stop scanning, check the selected cards and their previews, then write.
+5. After writing finishes, force-quit and reopen Wallet on the iPhone.
 
-Images are converted on the Mac to **1536 × 969 PNG**, scaled proportionally to fill the frame, and cropped from the center. Common formats supported by the system image tools include PNG, JPEG, and HEIC. Each file is limited to 30 MiB, 48 MP, and 16,384 pixels on either side. Use the built-in [artwork editor](docs/artwork.md) to adjust the composition and apply it directly to selected cards, or download a PNG.
+Imported images are converted locally to **1536 × 969 PNG**, scaled to fill
+the frame proportionally, and center-cropped. macOS-supported raster formats
+include PNG, JPEG, and HEIC. Limits are **30 MiB**, **48 MP**, and **16,384
+pixels per side**. The native [artwork editor](docs/artwork.md) supports
+zoom, drag-to-pan, framing sliders, transparency, and PNG export. Its sidebar
+entry also works without a connected phone or selected cards.
 
-### Card previews
+Scanning identifies cards; it does not download the iPhone's current artwork.
+A chosen replacement image takes preview priority. Otherwise an exact-ID
+artwork match from this Mac's Wallet cache can appear as **Mac cache preview**.
+That cache may be missing or outdated. It is a reference only: it is never
+selected for writing or automatically loaded into the crop editor.
 
-Scanning confirms card identifiers; it does not download the iPhone's current
-artwork. The page shows your chosen replacement image first. When no replacement
-has been chosen, it can show an exact-ID artwork match from this Mac's Wallet
-cache, labeled **Mac cache preview**. That cache can be missing or out of date
-and is not a live view of the phone. A card without either image shows an explicit
-unavailable-preview message; it does not mean the card on the iPhone is blank.
+Other controls include manual ID saving, selection, copying IDs, clearing
+images, removing local records, cache diagnostics, and original diagnostic
+logs. Removing local records never deletes cards from the iPhone or restores
+their original artwork. Saved IDs remain hidden until verified by a new scan.
 
-Cached previews are references only. They do not select an image for writing,
-open as replacement artwork in the editor, or count as a successful write.
-Choose or drop your own image before writing. Previewing does not move or change
-any files on the iPhone.
+Writing skips unchanged selected images by default. If every selected image
+is unchanged, the app can write all of them again. A changed USB connection
+invalidates scan verification; reconnect and scan before writing again.
 
-### Available controls
-
-- Device selection, refresh, and reconnect; scan start, stop, and diagnostics.
-- Artwork previews, image selection and drag-and-drop, bulk assignment, the built-in crop editor, select all or none, and copying card IDs.
-- Clear images, remove local records, or clear the local list. These actions do not delete cards from the iPhone or restore their original artwork.
-- Save IDs manually. Records remain hidden and cannot be written until confirmed by the current scan.
-- Write only selected cards whose images have changed by default. If all selected images are unchanged, you can write all selected cards again.
-- Write progress, success and error feedback, and collapsible logs with clear and auto-scroll controls.
-- Local Wallet cache diagnostics, name matching, unconfirmed-card notices, and settings saved separately for each device.
-
-### Scanning and caches
-
-Payment cards are identified through NFC activation events, card resource paths, and structured Wallet Dashboard events. Other payment cards from a cached remote-device record on the Mac are included only after an ID in the current log uniquely matches that cache. Membership cards and tickets must be opened individually for confirmation.
-
-The Mac cache count is not the total number of cards on the phone, and the page order does not represent Wallet's display order. Refreshing the cache only rereads existing metadata on the Mac; it does not force an iCloud sync. If a scan finds nothing, check the logs for `Connected to the unified device log stream`, then reconnect, unlock, and scan again. Values shown as `<private>` in system logs cannot be recovered.
-
-See [card identification and diagnostics](docs/wallet-discovery.md) and [connection and scanning troubleshooting](docs/troubleshooting.md).
+See [card identification](docs/wallet-discovery.md) and
+[connection and scanning troubleshooting](docs/troubleshooting.md).
 
 ## Local data
 
-The app and product display name is **Apple Wallet Card Skinner**. The project
-slug is `AppleWalletCardSkinner`, used for the GitHub repository, clone directory,
-and exported filenames. New installations keep the stable data path
-`~/Library/Application Support/AppleWalletCardSkinner/`:
+The display name and bundle filename are **Apple Wallet Card Skinner** and
+**Apple Wallet Card Skinner.app**. `AppleWalletCardSkinner` remains the
+technical slug for repository URLs, internal executables, exported artwork
+filenames, and the stable data path:
 
-- `state.json`: cards, selection state, image references, and successful-write signatures for each iPhone.
-- `artwork/`: local copies of imported images. Moving the original files does not affect newly uploaded artwork.
+`~/Library/Application Support/AppleWalletCardSkinner/`
 
-If that directory does not exist, the service reuses an existing
-`~/Library/Application Support/apple-wallet-card-skinner/` directory first,
-then `~/Library/Application Support/AirCard/`. It does not move existing files;
-cards, artwork, and write history remain in their current directory. An existing
-`AppleWalletCardSkinner` directory takes precedence, even when empty.
-`--data-dir` always overrides automatic selection.
+- `state.json`: per-device cards, selection state, image references, and
+  successful-write signatures.
+- `artwork/`: imported image copies, independent of their original files.
 
-On first launch, Apple Wallet Card Skinner reads legacy preferences and JSON card lists and copies any available images, leaving the old files untouched. Migrated records still need confirmation during the current scan. Cleared lists are not imported again after a restart. If a legacy image cannot be found, the page asks you to select it again.
+If that directory does not exist, reuse an existing
+`apple-wallet-card-skinner` directory first, then `AirCard`, without moving
+files. `--data-dir` overrides this lookup. Legacy preferences and JSON lists
+are imported once, leaving the source files untouched. Migrated cards still
+require a scan, and cleared lists are not reimported after relaunch.
 
-Use `--data-dir /path/to/data` to specify a separate data directory. The page makes no external network connections, uses no CDN, and does not upload images or device logs to the cloud. The local service validates Host, Origin, and session tokens; do not expose it to other devices through a reverse proxy.
+The backend has an exclusive data-directory lock. Quit an older browser
+service before opening the native app against the same data. The app opens no
+HTTP listener and makes no external network requests. Images and device logs
+remain local; only the parent app can access its inherited backend pipes.
 
-## Repository layout and validation
+## Repository and validation
 
-Python modules live in `backend/`, with `python3 -m backend` as the entrypoint. `backend/paths.py` locates the repository root used to find static pages and compiled native tools.
-
-- `web/`: the HTML / CSS / JavaScript interface, without a frontend framework.
-- `server.py`: the HTTP service, listening only on the loopback address.
-- `wallet_service.py`, `wallet_store.py`, `wallet_discovery.py`: device state, persistence, scanning, and task scheduling.
-- `wallet_catalog.py`: reads Wallet metadata on the Mac.
-- `image_processing.py`: image normalization using macOS `sips`.
-- `writer.py`, `apply_card_skin.py`, `card_assets.py`: artwork writing, asset generation, and cache cleanup.
-- `native/`: source code for native macOS device communication tools.
+- `macos/`: native window, card management, diagnostics, logs, and crop editor.
+- `backend/desktop.py`: bounded JSON pipe transport, with graceful shutdown.
+- Other `backend/` modules: device verification, persistence, image processing,
+  scanning, and artwork writing.
+- `native/`: Objective-C USB helpers, using the system's private frameworks.
+- `scripts/build_macos_app.py`: runtime relocation, bundle assembly, and signing.
+- `scripts/test_macos_app.py`: signed-product checks after moving the app outside
+  the checkout and removing Homebrew from its runtime PATH.
+- `web/` and `backend/server.py`: retained compatibility source and tests;
+  the native app neither bundles nor loads the browser interface.
 
 ```sh
-make all
 make test
+make app
+make test-app
 ```
 
-Tests are grouped by the component they cover, with every test directory named `__tests__`:
+`make test` includes backend and native-helper suites, compatibility web and
+integration checks, and native crop/PNG/EXIF tests. Node.js is needed only for
+compatibility web tests. `make test-app` checks the relocated runtime, private
+pipe protocol, rejection of unauthorized writes, and unchanged signatures
+after running. Tests use synthetic data and do not write to a real iPhone.
+The final appearance on a phone requires a real write and visual check.
 
-- `backend/__tests__/`: Python business logic, HTTP endpoints, and entrypoints.
-- `native/__tests__/`: native device discovery and log protocol tests, including Python compilation and execution wrappers.
-- `web/__tests__/`: the artwork editor and page messaging.
-- `__tests__/integration/`: native log output to Python identification, plus the HTTP, image processing, simulated writing, and persistence workflow.
-- `__tests__/fixtures.py`: simulated devices, processes, and image data shared by the test suites.
-
-Run a single suite with `make test-backend`, `make test-native`, `make test-web`, or `make test-integration`.
-
-Node.js is needed only for frontend checks, not to run the app. Automated tests cover the local service and simulated device workflows; the final appearance on a real iPhone still requires an actual write and visual check.
+Required project and bundled-runtime license notices are preserved in the
+app's `Contents/Resources/ThirdPartyNotices/`.

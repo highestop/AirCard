@@ -2,13 +2,20 @@
 
 ## Startup or device-tool errors
 
-`./start.sh` prints native build errors in the terminal. Install the Xcode
-Command Line Tools with `xcode-select --install` if they are missing. A full
-Xcode installation is not required. If an installed Xcode reports a license
-problem, open Xcode and review the agreement before retrying.
+`make app` and `./start.sh` print build errors in the terminal. Building the
+native interface requires Xcode with its macOS SDK and Swift compiler, plus a
+framework-based Python installation. The finished app includes its runtime
+and helpers and does not need those development tools to run. If Xcode reports
+a license problem, open Xcode and review the agreement before retrying.
+
+If the app reports that its local service exited, open **Operation logs** for
+the bounded startup diagnostic. Another native instance or an older browser
+service may already hold the same data-directory lock; quit that service and
+use **Reconnect**. Do not delete state.json or move existing artwork to bypass
+the lock. The private backend opens no HTTP listener.
 
 Device checks preserve a bounded excerpt of the native tool error in the
-page and activity log. A failed tool, invalid response, or timeout reports an
+app's operation log. A failed tool, invalid response, or timeout reports an
 unknown connection state instead of claiming that no iPhone is connected.
 The service never installs developer tools or accepts a license for you.
 
@@ -18,9 +25,10 @@ The service never installs developer tools or accepts a license for you.
 2. Refresh the device list or use the reconnect control in the identification
    diagnostics section. If multiple devices are connected, explicitly select
    the target iPhone.
-3. Run `make all` to ensure the native tools are built. To check device
-   enumeration separately, run `build/device_helper list`. Its output contains
-   device identifiers; keep it on your own machine.
+3. Quit and rebuild with `make app` if the bundled helpers are outdated. To
+   check enumeration from a source checkout, run `make all`, then
+   `build/device_helper list`. Its output contains device identifiers; keep it
+   on your own machine.
 
 Native device discovery uses the USBMux transport through
 `AMDeviceNotificationSubscribeWithOptions`. Testing on macOS 27 showed that
@@ -50,7 +58,7 @@ to finish its cleanup before the service stops processing further cards.
 
 ## Connected, but scanning finds no cards
 
-1. Start a card scan and expand the activity log.
+1. Start a card scan and open **Operation logs** in the sidebar.
 2. Confirm that `Connected to the unified device log stream` appears.
 3. Open Wallet on the iPhone and open each card you need. For payment cards,
    you can also double-click the side button, authenticate, and switch cards.
@@ -98,7 +106,7 @@ remains unsuccessful even if some artwork files were written.
 
 Books state and temporary staging must also be restored. An interrupted or
 unverified cleanup stops further attempts. After an update to this repository,
-restart with `./start.sh` to rebuild the matching native helper protocol.
+quit the app and run `./start.sh` to rebuild the matching native helper protocol.
 
 ## Validation scope
 

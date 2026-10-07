@@ -1,73 +1,55 @@
-# Card artwork editor
+# Native card artwork editor
 
-The card artwork editor is part of the main web interface. Images are processed
-locally in the browser using Canvas. The editor uses Simplified Chinese,
-matching the main interface, and has no language switcher.
+The crop editor uses SwiftUI controls, AppKit file dialogs, and ImageIO /
+Core Graphics image processing. It runs entirely inside Apple Wallet Card
+Skinner and uses Simplified Chinese, matching the main interface.
 
 ## Usage
 
-1. Select cards in the main interface and open the artwork editor. You can also
-   open it from an individual card's edit control.
-2. Select or drag in a PNG, JPEG, or WebP image. Each file is limited to
-   **30 MiB**, **48 MP**, and **16,384 px** on either side. For formats such as
-   HEIC, first import the image through a card's regular image picker, then edit
-   the converted artwork.
-3. Drag the image, adjust the zoom, or use the horizontal and vertical framing
-   sliders. The sliders support arrow keys. You can also use arrow keys to pan
-   the image; hold Shift for larger steps.
-4. Keep transparency or choose a white or black background. The checkerboard
-   only previews transparency and is not included in the output image.
-5. Apply the **1536 × 969 PNG** directly to the cards selected when you opened
-   the editor. Return to the main interface to check the previews, then use the
-   artwork write control to synchronize them to the iPhone.
+1. Select cards and choose **Edit composition**, or use a card's edit control.
+   The sidebar's standalone editor also works without a phone or selected cards.
+2. Choose or drag in a macOS-supported image, including PNG, JPEG, and HEIC.
+   Files are limited to **30 MiB**, **48 MP**, and **16,384 px** per side.
+3. Drag to pan, adjust the 1–4× zoom, or use horizontal and vertical framing
+   sliders. A framing slider is disabled when that axis has no overflow.
+4. Keep transparency or fill transparent regions with white or black. The
+   checkerboard previews transparency and is not included in the output.
+5. Apply the **1536 × 969 PNG** to the captured target cards, or export it
+   through the native save dialog. Applying only updates local artwork;
+   check the main preview and use **Write artwork** to synchronize the phone.
 
-Applying an image only updates the local artwork configuration; it does not
-automatically write to the phone. If the device or target cards change, reopen
-the editor to confirm the targets.
+Targets are captured when the editor opens. A changed device or lost USB
+connection cannot authorize applying artwork to an old target. The service
+also verifies every card against the current scan before accepting an image.
 
-Previously chosen local artwork loads automatically. Mac cache previews are
-reference images and are not loaded into the editor. When multiple cards are
-selected, the first card with a chosen image provides the starting artwork, and applying the result
-sets the same image on every target card. Saved artwork is an already-cropped
-PNG, so the editor cannot recover cropped-out parts of the original. Select the
-original image again if you need to reframe it.
+When editing selected cards, the first target with an assigned local image
+provides the starting artwork. Mac cache references never become replacement
+images. Existing artwork is an already-cropped PNG: choose the original file
+again to recover parts outside its old crop. Closing the editor discards
+unsaved composition changes.
 
-PNG downloads remain available. With no cards selected, you can create and
-download an image on its own, or visit `/artwork/` on the local service directly.
-Apply or download your work before closing the window; unsaved edits will be
-lost.
+## Image behavior
 
-## Image behavior and limits
+- The default geometry proportionally fills the frame and centers the image,
+  matching the backend's image-normalization geometry.
+- EXIF orientation is applied while decoding. Fresh PNG output has no inherited
+  orientation or source text metadata, preventing a second rotation.
+- Export dimensions are independent of window size and Retina screen density.
+- Enlarging cannot restore missing detail; the editor warns about upscaling.
+- Animated images use their first frame. Exact interpolation can differ from
+  macOS sips, which normalizes images in the Python service.
+- The preview does not simulate Wallet's overlays or on-device scaling. Leave
+  margins around important content and check the actual phone.
+- Invalid input preserves the valid composition already loaded.
 
-- The initial crop fills the frame proportionally and centers the image, using
-  the same geometry as `backend/image_processing.py`.
-- Export size is fixed at 1536 × 969, regardless of page size or screen pixel
-  density.
-- Enlarging an image cannot restore missing detail. The editor warns when the
-  image resolution is insufficient.
-- The browser handles image orientation, color, and scaling interpolation.
-  Pixel-for-pixel agreement with macOS `sips` is not guaranteed. Animated images
-  are reduced to a single still frame.
-- The preview does not simulate Wallet's rounded corners, logos, text overlays,
-  or on-device scaling. Leave margins around important content and check the
-  result on the phone.
-- Wallet determines how transparent areas appear. Choose a white or black
-  background if you need a specific background color.
-- Invalid files or files that exceed the limits produce an error message while
-  preserving the valid composition already loaded.
-
-## Local processing and tests
-
-The editor loads no external assets or CDNs, accepts no remote image URLs, and
-does not call device services directly. When you apply an image, it passes the
-PNG to the main interface through same-origin window messages. The main
-interface checks the targets again and uploads the image to `127.0.0.1`.
-Images are not uploaded to the cloud.
+## Validation
 
 ```sh
-make test-web
+make test-macos
+make test-backend
 ```
 
-Tests cover crop boundaries, file validation, image loading races, export, and
-device/card target validation in window messages. Actual image decoding and
-phone rendering still require validation in a browser and on a real device.
+Native tests verify crop edge selection, fixed output size, zoom boundaries,
+transparent and opaque backgrounds, and EXIF orientation. Pipe-transport
+tests cover captured-device authorization, unverified cards, input limits,
+malformed messages, and waiting for write cleanup before shutdown replies.
