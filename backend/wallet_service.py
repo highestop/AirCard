@@ -1,4 +1,4 @@
-"""Thread-safe Wallet controller for the loopback web UI.
+"""Thread-safe Wallet controller for the native app and compatibility web transport.
 
 Only cards verified in the active phone's current scan can receive artwork or be
 written. Historical records and the Mac's Wallet cache are supporting metadata.

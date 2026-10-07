@@ -13,12 +13,12 @@ import time
 import subprocess
 
 from . import APP_NAME
-from .paths import ROOT
+from .paths import TOOLS
 
 
 def find_device_helper() -> str | None:
-    """Find the native helper built alongside this checkout."""
-    candidate = ROOT / "build" / "device_helper"
+    """Find the native helper in the checkout or standalone app."""
+    candidate = TOOLS / "device_helper"
     return str(candidate) if candidate.is_file() and os.access(candidate, os.X_OK) else None
 
 

@@ -75,7 +75,7 @@ files untouched. Imported entries remain unconfirmed until scanned. An existing
 reimporting deleted entries. Available legacy images are copied into the new
 store; missing files are shown as unavailable so they can be selected again.
 
-New browser uploads are decoded, center-cropped to 1536 × 969 PNG, and copied
+New image imports are decoded, center-cropped to 1536 × 969 PNG, and copied
 into the local store. Successful-write signatures are keyed by device and card
 ID. Changing an image makes that card eligible for incremental writing again.
 
@@ -92,8 +92,11 @@ ID matching, duplicate names, pending counts, repeat scanning, legacy migration,
 per-device persistence, skin identity across reordering, and clear/relaunch.
 All committed fixtures use synthetic identifiers.
 
-`make all` builds the universal native USB helpers. `./start.sh` starts the
-loopback HTTP service and browser UI. The local service owns verification and
-write eligibility; the browser never supplies device file paths. HTTP tests
-cover session tokens, cross-origin rejection and request validation. Reading
-metadata and scanning device logs does not write artwork to the phone.
+`make all` builds the universal native USB helpers. `make app` packages them
+with the native interface and private Python runtime. `./start.sh` builds and
+opens the standalone app. The service owns verification and write eligibility;
+the interface never supplies device file paths. Desktop tests cover malformed
+pipe requests, image limits, unverified targets, and graceful write cleanup.
+Retained compatibility HTTP tests cover session tokens, cross-origin rejection,
+and request validation. Reading metadata and scanning logs does not write
+artwork to the phone.

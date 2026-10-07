@@ -15,10 +15,10 @@ import time
 import zipfile
 from pathlib import Path
 
-from .paths import ROOT
+from .paths import TOOLS
 
-DEVICE_HELPER = ROOT / "build" / "device_helper"
-AIRTRAFFIC_HOST = ROOT / "build" / "airtraffic_host"
+DEVICE_HELPER = TOOLS / "device_helper"
+AIRTRAFFIC_HOST = TOOLS / "airtraffic_host"
 AIRLOCK_ROOT = "/var/mobile/Media/Airlock/Book"
 SOURCE_PREFIX = "airlift-src-"
 LINK_PREFIX = "airlift-link-"
