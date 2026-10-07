@@ -61,7 +61,7 @@ phone's actual Wallet display order.
 
 ## Persistence and migration
 
-The Python service saves per-device records and artwork copies under
+The native Swift service saves per-device records and artwork copies under
 `~/Library/Application Support/AppleWalletCardSkinner/` for new installations.
 This technical path stays unchanged when the display name changes.
 If that directory does not exist, the service first reuses an existing
@@ -86,17 +86,17 @@ it requires an exact live card-ID overlap first.
 
 ## Validation
 
-`make test` covers native log decoding, cache
-parsing, malformed/cyclic archives, ambiguous devices, missing metadata, exact
-ID matching, duplicate names, pending counts, repeat scanning, legacy migration,
-per-device persistence, skin identity across reordering, and clear/relaunch.
-All committed fixtures use synthetic identifiers.
+`make test` covers native log decoding, bounded cache parsing, ambiguous devices,
+exact ID matching, legacy migration, per-device persistence, clear/relaunch,
+write cleanup, and authorization after disconnect or shutdown. All committed
+fixtures use synthetic identifiers. The optional `make test-legacy` retains
+additional regression coverage of the historical Python implementation.
 
 `make all` builds the universal native USB helpers. `make app` packages them
-with the native interface and private Python runtime. `./start.sh` builds and
+with the native interface and Swift service. `./start.sh` builds and
 opens the standalone app. The service owns verification and write eligibility;
 the interface never supplies device file paths. Desktop tests cover malformed
 pipe requests, image limits, unverified targets, and graceful write cleanup.
-Retained compatibility HTTP tests cover session tokens, cross-origin rejection,
+Optional legacy HTTP tests cover session tokens, cross-origin rejection,
 and request validation. Reading metadata and scanning logs does not write
 artwork to the phone.

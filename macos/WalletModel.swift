@@ -254,7 +254,7 @@ final class WalletModel: ObservableObject {
             do { _ = try await client.request("shutdown") }
             catch {
                 diagnosticLines.append(error.localizedDescription)
-                // Closing the pipe still invokes the Python service's cleanup.
+                // Closing the pipe still invokes the native service's cleanup.
                 client.closeInput()
                 while client.isRunning { try? await Task.sleep(nanoseconds: 100_000_000) }
             }
