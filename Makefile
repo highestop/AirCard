@@ -1,5 +1,4 @@
 CLANG := xcrun clang
-PYTHON ?= python3
 ARCH := $(shell uname -m)
 SWIFT := xcrun swiftc -swift-version 5 -target $(ARCH)-apple-macosx14.0 -parse-as-library -module-cache-path build/macos/module-cache
 SERVICE := macos/Errors.swift macos/Artwork.swift $(wildcard service/*.swift)
@@ -10,7 +9,7 @@ FOUNDATION := -framework Foundation -framework CoreFoundation
 MOBILEDEVICE := /System/Library/PrivateFrameworks/MobileDevice.framework/MobileDevice
 AIRTRAFFIC := /System/Library/PrivateFrameworks/AirTrafficHost.framework/AirTrafficHost
 
-.PHONY: all app native-service clean run test test-legacy test-backend test-native test-web test-integration test-macos test-service test-app
+.PHONY: all app native-service clean run test test-native test-macos test-service test-app
 
 all: build/device_helper build/airtraffic_host
 
@@ -28,26 +27,12 @@ run: app
 
 test: test-native test-service test-macos
 
-test-legacy: test-backend test-web test-integration
-
-test-backend:
-	$(PYTHON) -m unittest discover -s backend/__tests__ -t . -v
-
 test-native:
 	mkdir -p build/native-tests
 	@for source in native/__tests__/*.m; do \
 		target="build/native-tests/$$(basename "$$source" .m)"; \
 		$(CLANG) -fobjc-arc -Wall -Wextra -Werror $(FOUNDATION) $(MOBILEDEVICE) "$$source" -o "$$target" && "$$target" || exit 1; \
 	done
-
-test-web:
-	node --check web/app.js
-	node --check web/device-state.js
-	node --check web/artwork-bridge.js
-	node --test web/__tests__/*.test.cjs
-
-test-integration:
-	$(PYTHON) -m unittest discover -s __tests__/integration -t . -v
 
 test-macos: | build
 	mkdir -p build/macos

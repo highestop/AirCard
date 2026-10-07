@@ -89,14 +89,13 @@ it requires an exact live card-ID overlap first.
 `make test` covers native log decoding, bounded cache parsing, ambiguous devices,
 exact ID matching, legacy migration, per-device persistence, clear/relaunch,
 write cleanup, and authorization after disconnect or shutdown. All committed
-fixtures use synthetic identifiers. The optional `make test-legacy` retains
-additional regression coverage of the historical Python implementation.
+fixtures use synthetic identifiers. The service and helper suites run directly
+as native executables.
 
 `make all` builds the universal native USB helpers. `make app` packages them
 with the native interface and Swift service. `./start.sh` builds and
 opens the standalone app. The service owns verification and write eligibility;
 the interface never supplies device file paths. Desktop tests cover malformed
 pipe requests, image limits, unverified targets, and graceful write cleanup.
-Optional legacy HTTP tests cover session tokens, cross-origin rejection,
-and request validation. Reading metadata and scanning logs does not write
+Reading metadata and scanning logs does not write
 artwork to the phone.

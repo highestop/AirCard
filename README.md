@@ -136,8 +136,8 @@ files. `--data-dir` overrides this lookup. Legacy preferences and JSON lists
 are imported once, leaving the source files untouched. Migrated cards still
 require a scan, and cleared lists are not reimported after relaunch.
 
-The backend has an exclusive data-directory lock. Quit an older browser
-service before opening the native app against the same data. The app opens no
+The native service has an exclusive data-directory lock. Quit another instance
+before opening the app against the same data. The app opens no
 HTTP listener and makes no external network requests. Images and device logs
 remain local; only the parent app can access its inherited backend pipes.
 
@@ -151,8 +151,6 @@ remain local; only the parent app can access its inherited backend pipes.
 - `scripts/build_macos_app.sh`: native compilation, bundle assembly, and signing.
 - `service/__tests__/ProductTests.swift`: signed-product checks after moving
   the app outside the checkout and using only the system executable path.
-- `backend/` and `web/`: legacy reference implementations and optional
-  regression tests; the native app neither bundles nor executes these files.
 
 ```sh
 make test
@@ -165,9 +163,8 @@ alone. `make test-app` checks the native-only bundle and system library
 dependencies, relocated execution, live private pipes, rejection of
 unauthorized writes, and unchanged signatures after running. Tests use
 synthetic data and do not write to a real iPhone. The final appearance on a
-phone requires a real write and visual check. `make test-legacy` optionally
-runs the retained Python and browser suites; only that target needs Python
-and Node.js.
+phone requires a real write and visual check. All build and test targets are
+native; Python and browser implementations and their test runners have been removed.
 
 The required project license notice is preserved in the app's
 `Contents/Resources/ThirdPartyNotices/`.

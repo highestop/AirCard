@@ -3,8 +3,9 @@
 ## v1.2.6
 
 Source: `1e281a462e84ebedfc92cff27e1b7b0d192e89cb` from
-`mak5er/AirCard`, reviewed on 2026-10-04. This partially adapts the upstream commit to the
-Python service and browser interface.
+`mak5er/AirCard`, reviewed on 2026-10-04. The selected changes were originally
+adapted to the Python service and browser interface. Their supported behavior
+now lives in the native Swift service and Objective-C helpers.
 The commit message retains the source commit ID for future synchronization.
 
 ### Included
@@ -17,7 +18,8 @@ The commit message retains the source commit ID for future synchronization.
   A partial deletion cannot be reported as a successful card update.
 - Bounded device-tool error details and developer-tools troubleshooting,
   adapted to the local service and its existing error display.
-- Focused Python/native regression tests for the adapted behavior.
+- Focused regression tests for the adapted behavior, now run by the native
+  service and helper suites.
 
 ### Intentionally not applied
 

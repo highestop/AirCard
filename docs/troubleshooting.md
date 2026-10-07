@@ -9,8 +9,8 @@ native service and helpers and does not need Xcode to run. If Xcode reports
 a license problem, open Xcode and review the agreement before retrying.
 
 If the app reports that its local service exited, open **Operation logs** for
-the bounded startup diagnostic. Another native instance or an older browser
-service may already hold the same data-directory lock; quit that service and
+the bounded startup diagnostic. Another native instance may already hold the
+same data-directory lock; quit that instance and
 use **Reconnect**. Do not delete state.json or move existing artwork to bypass
 the lock. The private backend opens no HTTP listener.
 
