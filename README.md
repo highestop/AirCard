@@ -16,9 +16,11 @@ Native macOS interface → private stdin/stdout pipes → native Swift service �
   Intel for an Intel app. The USB helpers are universal; the interface and
   Swift service match the build CPU.
 - An iPhone connected over USB, unlocked, and configured to trust this Mac.
-- Artwork writing uses the existing iOS 18+ implementation. Private device
-  interfaces and Wallet logs can change between OS releases; actual artwork
-  writing still needs validation on the target iPhone.
+- Artwork writing requires a compatible iOS 18+ release. **iOS 27.2 beta 3
+  and newer are not supported** because Apple patched the underlying `airlift`
+  AirTraffic sync exploit; see the [compatibility update](https://github.com/highestop/AppleWalletCardSkinner/commit/52ba05dca4bdc590672c19d554701f4438e20338).
+  Private device interfaces and Wallet logs can change between OS releases;
+  actual artwork writing still needs validation on the target iPhone.
 
 Building from source additionally requires **Xcode** with its macOS SDK and
 Swift compiler. Open Xcode once to complete its setup and review any license
