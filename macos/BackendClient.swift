@@ -33,7 +33,7 @@ final class BackendClient {
             child.arguments?.append(contentsOf: ["--data-dir", CommandLine.arguments[index + 1]])
         }
         var environment = ProcessInfo.processInfo.environment.filter {
-            !$0.key.hasPrefix("PYTHON") && !$0.key.hasPrefix("DYLD_") && !$0.key.hasPrefix("LD_") && $0.key != "__PYVENV_LAUNCHER__"
+            !$0.key.hasPrefix("DYLD_") && !$0.key.hasPrefix("LD_")
         }
         environment["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
         child.environment = environment

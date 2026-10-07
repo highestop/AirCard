@@ -19,10 +19,12 @@ struct ProductTests {
                     at: contents, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey])
             else { throw failure("Missing bundle files") }
             var binaries = 0
+            let legacyExtensions: Set<String> = ["py", "pyc", "pyo", "js", "cjs", "html", "css"]
             for case let url as URL in iterator {
                 try check(
-                    !url.lastPathComponent.lowercased().contains("python") && url.pathExtension != "py",
-                    "Python must not be bundled")
+                    !url.lastPathComponent.lowercased().contains("python")
+                        && !legacyExtensions.contains(url.pathExtension.lowercased()),
+                    "Python and browser code must not be bundled")
                 if isLink(url) {
                     try check(
                         url.resolvingSymlinksInPath().path.hasPrefix(app.path + "/"),

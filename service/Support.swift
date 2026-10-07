@@ -113,7 +113,7 @@ enum Commands {
         value.executableURL = executable
         value.arguments = arguments
         value.environment = ProcessInfo.processInfo.environment.filter {
-            !$0.key.hasPrefix("PYTHON") && !$0.key.hasPrefix("DYLD_") && !$0.key.hasPrefix("LD_")
+            !$0.key.hasPrefix("DYLD_") && !$0.key.hasPrefix("LD_")
         }.merging(["PATH": "/usr/bin:/bin:/usr/sbin:/sbin"]) { _, new in new }
         return value
     }
