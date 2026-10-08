@@ -18,7 +18,7 @@ Native macOS interface → private stdin/stdout pipes → native Swift service �
 - An iPhone connected over USB, unlocked, and configured to trust this Mac.
 - Artwork writing requires a compatible iOS 18+ release. **iOS 27.2 beta 3
   and newer are not supported** because Apple patched the underlying `airlift`
-  AirTraffic sync exploit; see the [compatibility update](https://github.com/highestop/AppleWalletCardSkinner/commit/52ba05dca4bdc590672c19d554701f4438e20338).
+  AirTraffic sync exploit; see the [compatibility update](https://github.com/highestop/apple-wallet-card-skinner/commit/52ba05dca4bdc590672c19d554701f4438e20338).
   Private device interfaces and Wallet logs can change between OS releases;
   actual artwork writing still needs validation on the target iPhone.
 
@@ -31,8 +31,8 @@ Xcode is not required on the Mac that runs the finished app.
 ## Build and launch
 
 ```sh
-git clone https://github.com/highestop/AppleWalletCardSkinner.git
-cd AppleWalletCardSkinner
+git clone https://github.com/highestop/apple-wallet-card-skinner.git
+cd apple-wallet-card-skinner
 make app
 open "build/Apple Wallet Card Skinner.app"
 ```
@@ -122,9 +122,10 @@ See [card identification](docs/wallet-discovery.md) and
 ## Local data
 
 The display name and bundle filename are **Apple Wallet Card Skinner** and
-**Apple Wallet Card Skinner.app**. `AppleWalletCardSkinner` remains the
-technical slug for repository URLs, internal executables, exported artwork
-filenames, and the stable data path:
+**Apple Wallet Card Skinner.app**. `apple-wallet-card-skinner` is only the
+GitHub repository slug, used in repository URLs and the default clone-directory
+name. `AppleWalletCardSkinner` remains the technical identifier for internal
+executables, exported artwork filenames, and the stable data path:
 
 `~/Library/Application Support/AppleWalletCardSkinner/`
 
